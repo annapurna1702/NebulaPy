@@ -1036,7 +1036,7 @@ async function runCsvToExcel(){
     for(const f of t4files){
       const txt=await f.text();
       const wb=XLSX.utils.book_new();
-      const ws=XLSX.utils.aoa_to_sheet(txt.split('\n').map(r=>r.split(',')));
+      const ws = XLSX.utils.sheet_from_csv(txt);
       XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
       XLSX.writeFile(wb,f.name.replace('.csv','.xlsx'));
     }
