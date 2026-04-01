@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NebulaPy — .ipynb → .py Converter</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-void: #02020a;
+    --bg-deep: #060614;
+    --bg-panel: rgba(255,255,255,0.03);
+    --bg-panel-hover: rgba(255,255,255,0.055);
+    --border-dim: rgba(255,255,255,0.07);
+    --border-glow: rgba(139,92,246,0.4);
+    --border-cyan: rgba(34,211,238,0.35);
+    --accent-violet: #8b5cf6;
+    --accent-cyan: #22d3ee;
+    --accent-pink: #e879f9;
+    --accent-amber: #fbbf24;
+    --text-primary: #f0f0ff;
+    --text-secondary: rgba(200,200,230,0.6);
+    --text-dim: rgba(150,150,190,0.4);
+    --glow-violet: rgba(139,92,246,0.15);
+    --glow-cyan: rgba(34,211,238,0.12);
+    --success: #34d399;
+    --danger: #f87171;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg-void);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  #galaxy-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .nebula {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+    animation: nebula-drift 18s ease-in-out infinite alternate;
+  }
+  .nebula-1 { width: 600px; height: 400px; background: rgba(139,92,246,0.08); top: -100px; left: -150px; animation-delay: 0s; }
+  .nebula-2 { width: 500px; height: 350px; background: rgba(34,211,238,0.06); bottom: -80px; right: -100px; animation-delay: -6s; }
+  .nebula-3 { width: 400px; height: 300px; background: rgba(232,121,249,0.05); top: 40%; left: 50%; transform: translate(-50%,-50%); animation-delay: -12s; }
+
+  @keyframes nebula-drift {
+    0% { transform: scale(1) translate(0,0); }
+    100% { transform: scale(1.15) translate(30px,-20px); }
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 3rem;
+    animation: fade-up 0.8s ease both;
+  }
+
+  .logo-ring {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 1px solid var(--border-glow);
+    background: var(--glow-violet);
+    margin-bottom: 1.25rem;
+    position: relative;
+    animation: ring-pulse 3s ease-in-out infinite;
+  }
+  .logo-ring::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 1px solid rgba(139,92,246,0.2);
+    animation: ring-pulse 3s ease-in-out infinite 0.5s;
+  }
+
+  @keyframes ring-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(139,92,246,0.0); }
+    50% { box-shadow: 0 0 30px 4px rgba(139,92,246,0.18); }
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #f0f0ff 0%, #a78bfa 50%, #22d3ee 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+  }
+
+  .tagline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+  }
+  .tagline .v { color: var(--accent-violet); }
+  .tagline .c { color: var(--accent-cyan); }
+
+  .card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-radius: 18px;
+    padding: 1.75rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: border-color 0.2s;
+    animation: fade-up 0.8s ease both;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.1); }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent-violet);
+    margin-bottom: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .drop-zone {
+    border: 1.5px dashed rgba(139,92,246,0.3);
+    border-radius: 14px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(139,92,246,0.03);
+    position: relative;
+    overflow: hidden;
+  }
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(139,92,246,0.06) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .drop-zone:hover, .drop-zone.over {
+    border-color: rgba(139,92,246,0.6);
+    background: rgba(139,92,246,0.06);
+  }
+  .drop-zone:hover::before, .drop-zone.over::before { opacity: 1; }
+
+  .drop-icon {
+    font-size: 36px;
+    display: block;
+    margin-bottom: 0.75rem;
+    filter: drop-shadow(0 0 12px rgba(139,92,246,0.5));
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  .drop-label { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+  .drop-label strong { color: var(--text-primary); font-weight: 600; }
+  .drop-hint { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 0.4rem; }
+
+  #file-input { display: none; }
+
+  .options-grid {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-top: 1.25rem;
+  }
+
+  .opt-toggle {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-dim);
+    border-radius: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .opt-toggle:hover { border-color: var(--border-glow); background: rgba(139,92,246,0.08); }
+  .opt-toggle input { display: none; }
+  .opt-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(139,92,246,0.4);
+    background: transparent;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .opt-toggle input:checked ~ .opt-dot {
+    background: var(--accent-violet);
+    border-color: var(--accent-violet);
+    box-shadow: 0 0 8px rgba(139,92,246,0.6);
+  }
+  .opt-label { font-size: 12px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+
+  .file-list { display: flex; flex-direction: column; gap: 8px; margin-top: 1.25rem; }
+
+  .file-item {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-dim);
+    border-radius: 10px;
+    padding: 10px 14px;
+    transition: border-color 0.15s;
+    animation: fade-up 0.3s ease both;
+  }
+  .file-item:hover { border-color: rgba(255,255,255,0.1); }
+
+  .file-icon { font-size: 16px; flex-shrink: 0; }
+  .file-name { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text-primary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-size { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+
+  .badge {
+    font-size: 10px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 3px 9px; border-radius: 20px;
+    letter-spacing: 0.5px; white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .badge-ready { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); }
+  .badge-done  { background: rgba(52,211,153,0.12); color: var(--success); border: 1px solid rgba(52,211,153,0.2); }
+  .badge-err   { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.2); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 600;
+    border: none; cursor: pointer;
+    transition: all 0.18s ease;
+    letter-spacing: 0.2px;
+    text-decoration: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn:disabled:active { transform: none; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(139,92,246,0.3), 0 4px 20px rgba(109,40,217,0.3);
+  }
+  .btn-primary:not(:disabled):hover {
+    box-shadow: 0 0 0 1px rgba(139,92,246,0.5), 0 6px 28px rgba(109,40,217,0.45);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-dim);
+  }
+  .btn-secondary:not(:disabled):hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--text-primary);
+    border-color: rgba(255,255,255,0.15);
+  }
+
+  .btn-cyan {
+    background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(34,211,238,0.1));
+    color: var(--accent-cyan);
+    border: 1px solid rgba(34,211,238,0.25);
+  }
+  .btn-cyan:not(:disabled):hover {
+    background: linear-gradient(135deg, rgba(6,182,212,0.25), rgba(34,211,238,0.18));
+    border-color: rgba(34,211,238,0.45);
+    box-shadow: 0 0 20px rgba(34,211,238,0.12);
+  }
+
+  .btn-dl-single {
+    background: rgba(52,211,153,0.08);
+    color: var(--success);
+    border: 1px solid rgba(52,211,153,0.2);
+    padding: 5px 12px;
+    font-size: 11px;
+    border-radius: 7px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .btn-dl-single:hover {
+    background: rgba(52,211,153,0.15);
+    border-color: rgba(52,211,153,0.35);
+  }
+
+  .btn-remove {
+    background: none; border: none;
+    color: var(--text-dim);
+    cursor: pointer; padding: 2px 4px;
+    font-size: 14px; line-height: 1;
+    transition: color 0.15s;
+    font-family: inherit;
+  }
+  .btn-remove:hover { color: var(--danger); }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1.5rem; }
+
+  .preview-wrap {
+    margin-top: 1.5rem;
+    display: none;
+    animation: fade-up 0.4s ease both;
+  }
+  .preview-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.6rem;
+  }
+  .preview-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--accent-cyan);
+    letter-spacing: 1.5px; text-transform: uppercase;
+  }
+  .preview-box {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border-dim);
+    border-radius: 12px;
+    padding: 14px 16px;
+    max-height: 220px; overflow-y: auto;
+    position: relative;
+  }
+  .preview-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(34,211,238,0.3), transparent);
+  }
+  .preview-box pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px; line-height: 1.75;
+    color: rgba(200,220,255,0.75);
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .preview-box::-webkit-scrollbar { width: 4px; }
+  .preview-box::-webkit-scrollbar-track { background: transparent; }
+  .preview-box::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 2px; }
+
+  .stats-bar {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    margin-top: 1.25rem; padding-top: 1.25rem;
+    border-top: 1px solid var(--border-dim);
+  }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-val { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
+  .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+
+  .progress-bar-wrap { height: 2px; background: rgba(255,255,255,0.05); border-radius: 2px; margin-top: 1rem; overflow: hidden; display: none; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan)); border-radius: 2px; transition: width 0.3s ease; width: 0%; }
+
+  .glow-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(139,92,246,0.4), rgba(34,211,238,0.3), transparent);
+    margin: 2rem 0;
+    animation: glow-sweep 4s ease-in-out infinite;
+  }
+  @keyframes glow-sweep {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  .footer {
+    text-align: center; margin-top: 3rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-dim);
+    animation: fade-up 0.9s ease 0.5s both;
+  }
+  .footer a { color: var(--accent-violet); text-decoration: none; }
+  .footer a:hover { color: var(--accent-cyan); }
+</style>
+</head>
+<body>
+
+<canvas id="galaxy-canvas"></canvas>
+<div class="nebula nebula-1"></div>
+<div class="nebula nebula-2"></div>
+<div class="nebula nebula-3"></div>
+
+<div class="page">
+
+  <div class="header">
+    <div class="logo-ring">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 7h18M5 14h18M5 21h10" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="21" cy="21" r="4" stroke="#22d3ee" stroke-width="1.5"/>
+        <path d="M19.5 21h3M21 19.5v3" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>NebulaPy</h1>
+    <p class="tagline"><span class="v">.ipynb</span> &nbsp;→&nbsp; <span class="c">.py</span> &nbsp;·&nbsp; browser-native · zero upload</p>
+  </div>
+
+  <!-- Drop Zone -->
+  <div class="card" style="animation-delay:0.1s">
+    <div class="card-title">01 — select notebooks</div>
+    <div class="drop-zone" id="dropZone">
+      <span class="drop-icon">🌌</span>
+      <div class="drop-label"><strong>Click to choose files</strong> or drag &amp; drop here</div>
+      <div class="drop-hint">*.ipynb — multiple files supported</div>
+      <input type="file" id="file-input" accept=".ipynb" multiple>
+    </div>
+    <div id="fileList" class="file-list"></div>
+    <div class="progress-bar-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="stats-bar" id="statsBar" style="display:none">
+      <div class="stat"><span class="stat-val" id="statTotal">0</span><span class="stat-label">files queued</span></div>
+      <div class="stat"><span class="stat-val" id="statDone">0</span><span class="stat-label">converted</span></div>
+      <div class="stat"><span class="stat-val" id="statCells">0</span><span class="stat-label">cells processed</span></div>
+    </div>
+  </div>
+
+  <div class="glow-line"></div>
+
+  <!-- Options -->
+  <div class="card" style="animation-delay:0.2s">
+    <div class="card-title">02 — conversion options</div>
+    <div class="options-grid">
+      <label class="opt-toggle">
+        <input type="checkbox" id="opt-comments" checked>
+        <span class="opt-dot"></span>
+        <span class="opt-label">cell separators</span>
+      </label>
+      <label class="opt-toggle">
+        <input type="checkbox" id="opt-markdown" checked>
+        <span class="opt-dot"></span>
+        <span class="opt-label">markdown → comments</span>
+      </label>
+      <label class="opt-toggle">
+        <input type="checkbox" id="opt-empty">
+        <span class="opt-dot"></span>
+        <span class="opt-label">skip empty cells</span>
+      </label>
+      <label class="opt-toggle">
+        <input type="checkbox" id="opt-outputs">
+        <span class="opt-dot"></span>
+        <span class="opt-label">strip output metadata</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="glow-line"></div>
+
+  <!-- Actions -->
+  <div class="card" style="animation-delay:0.3s">
+    <div class="card-title">03 — convert &amp; download</div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="convertBtn" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Convert All
+      </button>
+      <button class="btn btn-cyan" id="downloadAllBtn" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Download All (.zip)
+      </button>
+      <button class="btn btn-secondary" id="clearBtn" disabled>Clear</button>
+    </div>
+
+    <div class="preview-wrap" id="previewWrap">
+      <div class="preview-header">
+        <span class="preview-label">⬡ preview — last converted</span>
+        <button class="btn btn-secondary" id="copyPreviewBtn" style="padding:5px 12px;font-size:11px;border-radius:7px;">copy</button>
+      </div>
+      <div class="preview-box">
+        <pre id="previewContent"></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>NebulaPy &nbsp;·&nbsp; all processing is local &nbsp;·&nbsp; no data leaves your browser</p>
+    <p style="margin-top:6px;">host on <a href="https://pages.github.com" target="_blank">GitHub Pages</a> for free</p>
+  </div>
+
+</div>
+
+<script>
+// ── Star field ──
+const canvas = document.getElementById('galaxy-canvas');
+const ctx = canvas.getContext('2d');
+let stars = [], W, H;
+
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', () => { resize(); initStars(); });
+
+function initStars() {
+  stars = [];
+  const count = Math.floor((W * H) / 4500);
+  for (let i = 0; i < count; i++) {
+    const t = Math.random();
+    stars.push({
+      x: Math.random() * W, y: Math.random() * H,
+      r: Math.random() * (t < 0.7 ? 0.8 : t < 0.9 ? 1.4 : 2.2),
+      a: Math.random(), speed: 0.003 + Math.random() * 0.008,
+      phase: Math.random() * Math.PI * 2,
+      color: t < 0.6 ? 'rgba(255,255,255,' : t < 0.8 ? 'rgba(180,160,255,' : 'rgba(120,200,255,',
+    });
+  }
+}
+initStars();
+
+let frame = 0;
+function drawStars() {
+  ctx.clearRect(0, 0, W, H);
+  frame += 0.016;
+  stars.forEach(s => {
+    const flicker = s.a * (0.5 + 0.5 * Math.sin(frame * s.speed * 60 + s.phase));
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = s.color + flicker + ')';
+    ctx.fill();
+  });
+  const grd = ctx.createLinearGradient(0, H * 0.3, W, H * 0.7);
+  grd.addColorStop(0, 'transparent');
+  grd.addColorStop(0.4, 'rgba(100,70,180,0.025)');
+  grd.addColorStop(0.5, 'rgba(60,100,200,0.04)');
+  grd.addColorStop(0.6, 'rgba(100,70,180,0.025)');
+  grd.addColorStop(1, 'transparent');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, W, H);
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+
+// ── App ──
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('file-input');
+const fileListEl = document.getElementById('fileList');
+const convertBtn = document.getElementById('convertBtn');
+const clearBtn = document.getElementById('clearBtn');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const previewWrap = document.getElementById('previewWrap');
+const previewContent = document.getElementById('previewContent');
+const copyPreviewBtn = document.getElementById('copyPreviewBtn');
+const statsBar = document.getElementById('statsBar');
+const progressWrap = document.getElementById('progressWrap');
+const progressBar = document.getElementById('progressBar');
+
+let files = [], converted = {}, totalCells = 0;
+
+function updateStats() {
+  const done = Object.keys(converted).length;
+  if (files.length) {
+    statsBar.style.display = 'flex';
+    document.getElementById('statTotal').textContent = files.length;
+    document.getElementById('statDone').textContent = done;
+    document.getElementById('statCells').textContent = totalCells;
+  } else {
+    statsBar.style.display = 'none';
+  }
+}
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => addFiles(Array.from(e.target.files)));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', e => { if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('over'); });
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  addFiles(Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.ipynb')));
+});
+
+function addFiles(newFiles) {
+  newFiles.forEach(f => { if (!files.find(x => x.name === f.name && x.size === f.size)) files.push(f); });
+  renderList();
+}
+
+function renderList() {
+  fileListEl.innerHTML = '';
+  const hasFiles = files.length > 0;
+  convertBtn.disabled = !hasFiles;
+  clearBtn.disabled = !hasFiles;
+  if (!hasFiles) { updateStats(); return; }
+  files.forEach((f, i) => {
+    const done = !!converted[f.name];
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.innerHTML = `
+      <span class="file-icon">📄</span>
+      <span class="file-name" title="${f.name}">${f.name}</span>
+      <span class="file-size">${(f.size/1024).toFixed(1)} KB</span>
+      <span class="badge ${done ? 'badge-done' : 'badge-ready'}">${done ? 'done' : 'ready'}</span>
+      ${done ? `<button class="btn btn-dl-single" onclick="downloadOne('${f.name}')">↓ .py</button>` : ''}
+      <button class="btn-remove" onclick="removeFile(${i})" title="remove">✕</button>
+    `;
+    fileListEl.appendChild(item);
+  });
+  updateStats();
+}
+
+function removeFile(i) {
+  const name = files[i].name;
+  delete converted[name];
+  files.splice(i, 1);
+  downloadAllBtn.disabled = Object.keys(converted).length < 1;
+  if (!files.length) previewWrap.style.display = 'none';
+  renderList();
+}
+
+clearBtn.addEventListener('click', () => {
+  files = []; converted = {}; totalCells = 0;
+  renderList();
+  downloadAllBtn.disabled = true;
+  previewWrap.style.display = 'none';
+  progressWrap.style.display = 'none';
+});
+
+function convertNotebook(text, filename) {
+  const incSep = document.getElementById('opt-comments').checked;
+  const incMd = document.getElementById('opt-markdown').checked;
+  const skipEmpty = document.getElementById('opt-empty').checked;
+  let nb;
+  try { nb = JSON.parse(text); } catch(e) { return null; }
+  const cells = nb.cells || (nb.worksheets && nb.worksheets[0] && nb.worksheets[0].cells) || [];
+  const lines = [
+    `# ╔══════════════════════════════════════════════╗`,
+    `# ║  converted by NebulaPy                      ║`,
+    `# ║  source: ${filename.slice(0,38).padEnd(38)}║`,
+    `# ╚══════════════════════════════════════════════╝`,
+    ``
+  ];
+  let cellNum = 0, processed = 0;
+  cells.forEach(cell => {
+    const type = cell.cell_type;
+    const src = Array.isArray(cell.source) ? cell.source.join('') : (cell.source || '');
+    if (skipEmpty && !src.trim()) return;
+    processed++;
+    if (type === 'code') {
+      cellNum++;
+      if (incSep) lines.push(`# ─── cell [${cellNum}] ${'─'.repeat(40)}`);
+      lines.push(src.trimEnd(), '');
+    } else if (type === 'markdown' && incMd) {
+      cellNum++;
+      if (incSep) lines.push(`# ─── markdown [${cellNum}] ${'─'.repeat(36)}`);
+      src.split('\n').forEach(l => lines.push(`# ${l}`));
+      lines.push('');
+    } else if (type === 'raw') {
+      if (incSep) lines.push(`# ─── raw cell ${'─'.repeat(39)}`);
+      src.split('\n').forEach(l => lines.push(`# ${l}`));
+      lines.push('');
+    }
+  });
+  totalCells += processed;
+  return lines.join('\n');
+}
+
+convertBtn.addEventListener('click', async () => {
+  convertBtn.disabled = true;
+  convertBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg> Converting...`;
+  progressWrap.style.display = 'block';
+  totalCells = 0;
+
+  for (let i = 0; i < files.length; i++) {
+    progressBar.style.width = ((i / files.length) * 100) + '%';
+    const text = await files[i].text();
+    const py = convertNotebook(text, files[i].name);
+    if (py !== null) {
+      converted[files[i].name] = py;
+      previewContent.textContent = py.slice(0, 3000) + (py.length > 3000 ? '\n\n# ... (truncated preview)' : '');
+      previewWrap.style.display = 'block';
+    }
+  }
+
+  progressBar.style.width = '100%';
+  setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 800);
+
+  convertBtn.disabled = false;
+  convertBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Convert All`;
+  downloadAllBtn.disabled = Object.keys(converted).length < 1;
+  renderList();
+});
+
+function downloadOne(name) {
+  const py = converted[name];
+  if (!py) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([py], { type: 'text/x-python' }));
+  a.download = name.replace('.ipynb', '.py');
+  a.click();
+}
+
+downloadAllBtn.addEventListener('click', async () => {
+  const entries = Object.entries(converted);
+  if (entries.length === 1) { downloadOne(entries[0][0]); return; }
+  const zip = new JSZip();
+  entries.forEach(([name, py]) => zip.file(name.replace('.ipynb', '.py'), py));
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'nebulapy_converted.zip';
+  a.click();
+});
+
+copyPreviewBtn.addEventListener('click', () => {
+  navigator.clipboard.writeText(previewContent.textContent).then(() => {
+    copyPreviewBtn.textContent = 'copied!';
+    setTimeout(() => { copyPreviewBtn.textContent = 'copy'; }, 1800);
+  });
+});
+</script>
+</body>
+  </html>
