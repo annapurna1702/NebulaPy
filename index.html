@@ -3,731 +3,1152 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NebulaPy — .ipynb → .py Converter</title>
+<title>NebulaPy Suite</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg-void: #02020a;
-    --bg-deep: #060614;
-    --bg-panel: rgba(255,255,255,0.03);
-    --bg-panel-hover: rgba(255,255,255,0.055);
-    --border-dim: rgba(255,255,255,0.07);
-    --border-glow: rgba(139,92,246,0.4);
-    --border-cyan: rgba(34,211,238,0.35);
-    --accent-violet: #8b5cf6;
-    --accent-cyan: #22d3ee;
-    --accent-pink: #e879f9;
-    --accent-amber: #fbbf24;
-    --text-primary: #f0f0ff;
-    --text-secondary: rgba(200,200,230,0.6);
-    --text-dim: rgba(150,150,190,0.4);
-    --glow-violet: rgba(139,92,246,0.15);
-    --glow-cyan: rgba(34,211,238,0.12);
-    --success: #34d399;
-    --danger: #f87171;
-  }
+:root {
+  --bg-void: #02020a;
+  --bg-deep: #060614;
+  --bg-panel: rgba(255,255,255,0.03);
+  --bg-panel-hover: rgba(255,255,255,0.055);
+  --border-dim: rgba(255,255,255,0.07);
+  --text-primary: #f0f0ff;
+  --text-secondary: rgba(200,200,230,0.6);
+  --text-dim: rgba(150,150,190,0.4);
+  --success: #34d399;
+  --danger: #f87171;
 
-  html { scroll-behavior: smooth; }
+  --violet: #8b5cf6;
+  --violet-glow: rgba(139,92,246,0.18);
+  --pink: #e879f9;
+  --pink-glow: rgba(232,121,249,0.15);
+  --amber: #fbbf24;
+  --amber-glow: rgba(251,191,36,0.15);
+  --cyan: #22d3ee;
+  --cyan-glow: rgba(34,211,238,0.14);
+  --emerald: #34d399;
+  --emerald-glow: rgba(52,211,153,0.14);
+}
 
-  body {
-    font-family: 'Syne', sans-serif;
-    background: var(--bg-void);
-    color: var(--text-primary);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-  #galaxy-canvas {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-  }
+#galaxy-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 
-  .nebula {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(80px);
-    pointer-events: none;
-    z-index: 0;
-    animation: nebula-drift 18s ease-in-out infinite alternate;
-  }
-  .nebula-1 { width: 600px; height: 400px; background: rgba(139,92,246,0.08); top: -100px; left: -150px; animation-delay: 0s; }
-  .nebula-2 { width: 500px; height: 350px; background: rgba(34,211,238,0.06); bottom: -80px; right: -100px; animation-delay: -6s; }
-  .nebula-3 { width: 400px; height: 300px; background: rgba(232,121,249,0.05); top: 40%; left: 50%; transform: translate(-50%,-50%); animation-delay: -12s; }
+.nebula {
+  position: fixed; border-radius: 50%;
+  filter: blur(90px); pointer-events: none; z-index: 0;
+  animation: ndrift 20s ease-in-out infinite alternate;
+}
+.n1 { width:700px;height:450px;background:rgba(139,92,246,0.07);top:-120px;left:-180px;animation-delay:0s; }
+.n2 { width:550px;height:380px;background:rgba(34,211,238,0.05);bottom:-100px;right:-120px;animation-delay:-7s; }
+.n3 { width:450px;height:320px;background:rgba(232,121,249,0.04);top:45%;left:50%;transform:translate(-50%,-50%);animation-delay:-14s; }
+@keyframes ndrift { 0%{transform:scale(1) translate(0,0)} 100%{transform:scale(1.12) translate(25px,-18px)} }
 
-  @keyframes nebula-drift {
-    0% { transform: scale(1) translate(0,0); }
-    100% { transform: scale(1.15) translate(30px,-20px); }
-  }
+.page { position:relative;z-index:1;max-width:900px;margin:0 auto;padding:3rem 1.5rem 6rem; }
 
-  .page {
-    position: relative;
-    z-index: 1;
-    max-width: 780px;
-    margin: 0 auto;
-    padding: 3rem 1.5rem 5rem;
-  }
+/* ── DASHBOARD ── */
+#view-dashboard { display:block; }
+#view-tool      { display:none; }
 
-  .header {
-    text-align: center;
-    margin-bottom: 3rem;
-    animation: fade-up 0.8s ease both;
-  }
+.brand { text-align:center;margin-bottom:3.5rem;animation:fadeup .8s ease both; }
+.brand-icon {
+  display:inline-flex;align-items:center;justify-content:center;
+  width:70px;height:70px;border-radius:50%;
+  border:1px solid rgba(139,92,246,0.4);
+  background:rgba(139,92,246,0.1);
+  margin-bottom:1.5rem;
+  animation:rpulse 3s ease-in-out infinite;
+}
+@keyframes rpulse { 0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,0)} 50%{box-shadow:0 0 32px 6px rgba(139,92,246,0.18)} }
 
-  .logo-ring {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px; height: 64px;
-    border-radius: 50%;
-    border: 1px solid var(--border-glow);
-    background: var(--glow-violet);
-    margin-bottom: 1.25rem;
-    position: relative;
-    animation: ring-pulse 3s ease-in-out infinite;
-  }
-  .logo-ring::after {
-    content: '';
-    position: absolute;
-    inset: -6px;
-    border-radius: 50%;
-    border: 1px solid rgba(139,92,246,0.2);
-    animation: ring-pulse 3s ease-in-out infinite 0.5s;
-  }
+h1 {
+  font-size:clamp(2.2rem,5vw,3.2rem);font-weight:800;letter-spacing:-1.5px;
+  background:linear-gradient(135deg,#f0f0ff 0%,#a78bfa 45%,#22d3ee 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1.1;margin-bottom:.5rem;
+}
+.tagline { font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-secondary);letter-spacing:.5px; }
+.tagline em { font-style:normal;color:var(--violet); }
 
-  @keyframes ring-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(139,92,246,0.0); }
-    50% { box-shadow: 0 0 30px 4px rgba(139,92,246,0.18); }
-  }
+.tools-grid {
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;
+  margin-top:2.5rem;
+}
 
-  h1 {
-    font-size: clamp(2rem, 5vw, 2.8rem);
-    font-weight: 800;
-    letter-spacing: -1px;
-    background: linear-gradient(135deg, #f0f0ff 0%, #a78bfa 50%, #22d3ee 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1.1;
-    margin-bottom: 0.5rem;
-  }
+.tool-card {
+  background:var(--bg-panel);border:1px solid var(--border-dim);
+  border-radius:18px;padding:1.6rem;cursor:pointer;
+  transition:all .22s ease;position:relative;overflow:hidden;
+  animation:fadeup .7s ease both;
+}
+.tool-card::before {
+  content:'';position:absolute;inset:0;border-radius:18px;
+  background:radial-gradient(ellipse at 30% 20%,var(--card-glow,rgba(139,92,246,0.08)) 0%,transparent 65%);
+  opacity:0;transition:opacity .3s;
+}
+.tool-card:hover { border-color:var(--card-border,rgba(139,92,246,.35));transform:translateY(-3px); }
+.tool-card:hover::before { opacity:1; }
 
-  .tagline {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    color: var(--text-secondary);
-    letter-spacing: 0.5px;
-  }
-  .tagline .v { color: var(--accent-violet); }
-  .tagline .c { color: var(--accent-cyan); }
+.tool-card[data-tool="ipynb-py"]  { --card-border:rgba(139,92,246,.4);  --card-glow:rgba(139,92,246,.1);  }
+.tool-card[data-tool="py-ipynb"]  { --card-border:rgba(232,121,249,.4); --card-glow:rgba(232,121,249,.1); }
+.tool-card[data-tool="excel-csv"] { --card-border:rgba(251,191,36,.35); --card-glow:rgba(251,191,36,.09); }
+.tool-card[data-tool="csv-excel"] { --card-border:rgba(251,191,36,.35); --card-glow:rgba(251,191,36,.09); }
+.tool-card[data-tool="img-pdf"]   { --card-border:rgba(34,211,238,.35); --card-glow:rgba(34,211,238,.08); }
+.tool-card[data-tool="docx-pdf"]  { --card-border:rgba(52,211,153,.35); --card-glow:rgba(52,211,153,.08); }
 
-  .card {
-    background: var(--bg-panel);
-    border: 1px solid var(--border-dim);
-    border-radius: 18px;
-    padding: 1.75rem;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    transition: border-color 0.2s;
-    animation: fade-up 0.8s ease both;
-  }
-  .card:hover { border-color: rgba(255,255,255,0.1); }
+.tc-icon {
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;margin-bottom:1rem;
+  border:1px solid rgba(255,255,255,0.08);
+}
 
-  @keyframes fade-up {
-    from { opacity: 0; transform: translateY(18px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+.tc-title { font-size:15px;font-weight:700;letter-spacing:-.3px;margin-bottom:.35rem; }
+.tc-sub { font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-secondary);line-height:1.6; }
 
-  .card-title {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--accent-violet);
-    margin-bottom: 1rem;
-    font-family: 'JetBrains Mono', monospace;
-  }
+.tc-badge {
+  display:inline-block;margin-top:.9rem;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+  letter-spacing:1px;text-transform:uppercase;
+  padding:3px 10px;border-radius:20px;
+}
 
-  .drop-zone {
-    border: 1.5px dashed rgba(139,92,246,0.3);
-    border-radius: 14px;
-    padding: 2.5rem 1.5rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: rgba(139,92,246,0.03);
-    position: relative;
-    overflow: hidden;
-  }
-  .drop-zone::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at center, rgba(139,92,246,0.06) 0%, transparent 70%);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .drop-zone:hover, .drop-zone.over {
-    border-color: rgba(139,92,246,0.6);
-    background: rgba(139,92,246,0.06);
-  }
-  .drop-zone:hover::before, .drop-zone.over::before { opacity: 1; }
+.badge-violet { background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.2); }
+.badge-pink   { background:rgba(232,121,249,.12);color:#e879f9;border:1px solid rgba(232,121,249,.2); }
+.badge-amber  { background:rgba(251,191,36,.12); color:#fbbf24;border:1px solid rgba(251,191,36,.2); }
+.badge-cyan   { background:rgba(34,211,238,.1);  color:#22d3ee;border:1px solid rgba(34,211,238,.2); }
+.badge-emerald{ background:rgba(52,211,153,.1);  color:#34d399;border:1px solid rgba(52,211,153,.2); }
 
-  .drop-icon {
-    font-size: 36px;
-    display: block;
-    margin-bottom: 0.75rem;
-    filter: drop-shadow(0 0 12px rgba(139,92,246,0.5));
-    animation: float 4s ease-in-out infinite;
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
-  }
+.glow-line {
+  height:1px;margin:2.5rem 0;
+  background:linear-gradient(90deg,transparent,rgba(139,92,246,.4),rgba(34,211,238,.3),transparent);
+  animation:gsweep 4s ease-in-out infinite;
+}
+@keyframes gsweep { 0%,100%{opacity:.4} 50%{opacity:1} }
+@keyframes fadeup { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
-  .drop-label { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
-  .drop-label strong { color: var(--text-primary); font-weight: 600; }
-  .drop-hint { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 0.4rem; }
+/* ── TOOL VIEW ── */
+.tool-header {
+  display:flex;align-items:center;gap:16px;margin-bottom:2.5rem;
+  animation:fadeup .5s ease both;
+}
+.back-btn {
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.05);border:1px solid var(--border-dim);
+  border-radius:9px;padding:8px 14px;cursor:pointer;
+  font-family:'Syne',sans-serif;font-size:12px;font-weight:600;
+  color:var(--text-secondary);transition:all .15s;
+}
+.back-btn:hover { background:rgba(255,255,255,.09);color:var(--text-primary); }
 
-  #file-input { display: none; }
+.tool-name { font-size:1.5rem;font-weight:800;letter-spacing:-.5px; }
+.tool-name.violet { background:linear-gradient(135deg,#a78bfa,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+.tool-name.pink   { background:linear-gradient(135deg,#f0abfc,#c026d3);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+.tool-name.amber  { background:linear-gradient(135deg,#fde68a,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+.tool-name.cyan   { background:linear-gradient(135deg,#67e8f9,#0891b2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+.tool-name.emerald{ background:linear-gradient(135deg,#6ee7b7,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
 
-  .options-grid {
-    display: flex; flex-wrap: wrap; gap: 10px;
-    margin-top: 1.25rem;
-  }
+/* ── SHARED TOOL COMPONENTS ── */
+.card {
+  background:var(--bg-panel);border:1px solid var(--border-dim);
+  border-radius:18px;padding:1.75rem;backdrop-filter:blur(12px);
+  animation:fadeup .6s ease both;margin-bottom:1rem;
+}
+.card:hover { border-color:rgba(255,255,255,.1); }
 
-  .opt-toggle {
-    display: flex; align-items: center; gap: 8px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border-dim);
-    border-radius: 8px;
-    padding: 7px 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-    user-select: none;
-  }
-  .opt-toggle:hover { border-color: var(--border-glow); background: rgba(139,92,246,0.08); }
-  .opt-toggle input { display: none; }
-  .opt-dot {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(139,92,246,0.4);
-    background: transparent;
-    transition: all 0.15s;
-    flex-shrink: 0;
-  }
-  .opt-toggle input:checked ~ .opt-dot {
-    background: var(--accent-violet);
-    border-color: var(--accent-violet);
-    box-shadow: 0 0 8px rgba(139,92,246,0.6);
-  }
-  .opt-label { font-size: 12px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+.card-title {
+  font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace;margin-bottom:1rem;
+}
+.ct-violet { color:var(--violet); }
+.ct-pink   { color:var(--pink); }
+.ct-amber  { color:var(--amber); }
+.ct-cyan   { color:var(--cyan); }
+.ct-emerald{ color:var(--emerald); }
 
-  .file-list { display: flex; flex-direction: column; gap: 8px; margin-top: 1.25rem; }
+.drop-zone {
+  border:1.5px dashed rgba(255,255,255,.15);border-radius:14px;
+  padding:2.5rem 1.5rem;text-align:center;cursor:pointer;
+  transition:all .2s ease;background:rgba(255,255,255,.02);
+  position:relative;overflow:hidden;
+}
+.drop-zone:hover,.drop-zone.over {
+  background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.3);
+}
+.drop-icon { font-size:34px;display:block;margin-bottom:.7rem;animation:float 4s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.drop-label { font-size:14px;color:var(--text-secondary);line-height:1.7; }
+.drop-label strong { color:var(--text-primary); }
+.drop-hint { font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);margin-top:.4rem; }
 
-  .file-item {
-    display: flex; align-items: center; gap: 10px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border-dim);
-    border-radius: 10px;
-    padding: 10px 14px;
-    transition: border-color 0.15s;
-    animation: fade-up 0.3s ease both;
-  }
-  .file-item:hover { border-color: rgba(255,255,255,0.1); }
+/* Accent drop zones */
+.dz-violet:hover,.dz-violet.over { border-color:rgba(139,92,246,.55);background:rgba(139,92,246,.05); }
+.dz-pink:hover,.dz-pink.over     { border-color:rgba(232,121,249,.5);background:rgba(232,121,249,.05); }
+.dz-amber:hover,.dz-amber.over   { border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.05); }
+.dz-cyan:hover,.dz-cyan.over     { border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.05); }
+.dz-emerald:hover,.dz-emerald.over{border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.05);}
 
-  .file-icon { font-size: 16px; flex-shrink: 0; }
-  .file-name { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text-primary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .file-size { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.file-list { display:flex;flex-direction:column;gap:8px;margin-top:1.25rem; }
+.file-item {
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.03);border:1px solid var(--border-dim);
+  border-radius:10px;padding:10px 14px;transition:border-color .15s;
+  animation:fadeup .3s ease both;
+}
+.file-item:hover { border-color:rgba(255,255,255,.1); }
+.file-icon { font-size:15px;flex-shrink:0; }
+.file-name { font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.file-size { font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);white-space:nowrap; }
 
-  .badge {
-    font-size: 10px; font-weight: 600;
-    font-family: 'JetBrains Mono', monospace;
-    padding: 3px 9px; border-radius: 20px;
-    letter-spacing: 0.5px; white-space: nowrap;
-    text-transform: uppercase;
-  }
-  .badge-ready { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); }
-  .badge-done  { background: rgba(52,211,153,0.12); color: var(--success); border: 1px solid rgba(52,211,153,0.2); }
-  .badge-err   { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.2); }
+.fbadge {
+  font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;
+  padding:3px 9px;border-radius:20px;letter-spacing:.5px;white-space:nowrap;text-transform:uppercase;
+}
+.fb-ready   { background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.2); }
+.fb-done    { background:rgba(52,211,153,.12);color:var(--success);border:1px solid rgba(52,211,153,.2); }
+.fb-err     { background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2); }
 
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 10px 22px;
-    border-radius: 10px;
-    font-family: 'Syne', sans-serif;
-    font-size: 13px; font-weight: 600;
-    border: none; cursor: pointer;
-    transition: all 0.18s ease;
-    letter-spacing: 0.2px;
-    text-decoration: none;
-  }
-  .btn:active { transform: scale(0.97); }
-  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-  .btn:disabled:active { transform: none; }
+.btn-rm { background:none;border:none;color:var(--text-dim);cursor:pointer;padding:2px 4px;font-size:14px;line-height:1;transition:color .15s; }
+.btn-rm:hover { color:var(--danger); }
 
-  .btn-primary {
-    background: linear-gradient(135deg, #7c3aed, #6d28d9);
-    color: #fff;
-    box-shadow: 0 0 0 1px rgba(139,92,246,0.3), 0 4px 20px rgba(109,40,217,0.3);
-  }
-  .btn-primary:not(:disabled):hover {
-    box-shadow: 0 0 0 1px rgba(139,92,246,0.5), 0 6px 28px rgba(109,40,217,0.45);
-    transform: translateY(-1px);
-  }
+.stats-bar {
+  display:flex;gap:20px;flex-wrap:wrap;
+  margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border-dim);
+}
+.stat { display:flex;flex-direction:column;gap:2px; }
+.stat-val { font-size:22px;font-weight:700;color:var(--text-primary);letter-spacing:-.5px; }
+.stat-label { font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase; }
 
-  .btn-secondary {
-    background: rgba(255,255,255,0.05);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-dim);
-  }
-  .btn-secondary:not(:disabled):hover {
-    background: rgba(255,255,255,0.08);
-    color: var(--text-primary);
-    border-color: rgba(255,255,255,0.15);
-  }
+.options-grid { display:flex;flex-wrap:wrap;gap:10px;margin-top:1.25rem; }
+.opt-toggle {
+  display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);
+  border:1px solid var(--border-dim);border-radius:8px;padding:7px 12px;cursor:pointer;
+  transition:all .15s;user-select:none;
+}
+.opt-toggle:hover { background:rgba(255,255,255,.07); }
+.opt-toggle input { display:none; }
+.opt-dot { width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(255,255,255,.2);background:transparent;transition:all .15s;flex-shrink:0; }
+.opt-label { font-size:12px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace; }
 
-  .btn-cyan {
-    background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(34,211,238,0.1));
-    color: var(--accent-cyan);
-    border: 1px solid rgba(34,211,238,0.25);
-  }
-  .btn-cyan:not(:disabled):hover {
-    background: linear-gradient(135deg, rgba(6,182,212,0.25), rgba(34,211,238,0.18));
-    border-color: rgba(34,211,238,0.45);
-    box-shadow: 0 0 20px rgba(34,211,238,0.12);
-  }
+/* accent checked dots */
+.ot-violet .opt-toggle input:checked ~ .opt-dot { background:var(--violet);border-color:var(--violet);box-shadow:0 0 8px rgba(139,92,246,.6); }
+.ot-pink   .opt-toggle input:checked ~ .opt-dot { background:var(--pink);border-color:var(--pink);box-shadow:0 0 8px rgba(232,121,249,.5); }
+.ot-amber  .opt-toggle input:checked ~ .opt-dot { background:var(--amber);border-color:var(--amber);box-shadow:0 0 8px rgba(251,191,36,.5); }
+.ot-cyan   .opt-toggle input:checked ~ .opt-dot { background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px rgba(34,211,238,.5); }
+.ot-emerald.opt-toggle input:checked ~ .opt-dot { background:var(--emerald);border-color:var(--emerald);box-shadow:0 0 8px rgba(52,211,153,.5); }
 
-  .btn-dl-single {
-    background: rgba(52,211,153,0.08);
-    color: var(--success);
-    border: 1px solid rgba(52,211,153,0.2);
-    padding: 5px 12px;
-    font-size: 11px;
-    border-radius: 7px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .btn-dl-single:hover {
-    background: rgba(52,211,153,0.15);
-    border-color: rgba(52,211,153,0.35);
-  }
+.btn-row { display:flex;gap:10px;flex-wrap:wrap;margin-top:1.5rem; }
 
-  .btn-remove {
-    background: none; border: none;
-    color: var(--text-dim);
-    cursor: pointer; padding: 2px 4px;
-    font-size: 14px; line-height: 1;
-    transition: color 0.15s;
-    font-family: inherit;
-  }
-  .btn-remove:hover { color: var(--danger); }
+.btn {
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 22px;border-radius:10px;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:600;
+  border:none;cursor:pointer;transition:all .18s ease;letter-spacing:.2px;
+}
+.btn:active { transform:scale(.97); }
+.btn:disabled { opacity:.35;cursor:not-allowed; }
+.btn:disabled:active { transform:none; }
 
-  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1.5rem; }
+.btn-violet { background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;box-shadow:0 0 0 1px rgba(139,92,246,.3),0 4px 20px rgba(109,40,217,.3); }
+.btn-violet:not(:disabled):hover { box-shadow:0 0 0 1px rgba(139,92,246,.5),0 6px 28px rgba(109,40,217,.45);transform:translateY(-1px); }
 
-  .preview-wrap {
-    margin-top: 1.5rem;
-    display: none;
-    animation: fade-up 0.4s ease both;
-  }
-  .preview-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 0.6rem;
-  }
-  .preview-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; font-weight: 500;
-    color: var(--accent-cyan);
-    letter-spacing: 1.5px; text-transform: uppercase;
-  }
-  .preview-box {
-    background: rgba(0,0,0,0.4);
-    border: 1px solid var(--border-dim);
-    border-radius: 12px;
-    padding: 14px 16px;
-    max-height: 220px; overflow-y: auto;
-    position: relative;
-  }
-  .preview-box::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(34,211,238,0.3), transparent);
-  }
-  .preview-box pre {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11.5px; line-height: 1.75;
-    color: rgba(200,220,255,0.75);
-    white-space: pre-wrap; word-break: break-all;
-  }
-  .preview-box::-webkit-scrollbar { width: 4px; }
-  .preview-box::-webkit-scrollbar-track { background: transparent; }
-  .preview-box::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 2px; }
+.btn-pink { background:linear-gradient(135deg,#a21caf,#86198f);color:#fff;box-shadow:0 0 0 1px rgba(232,121,249,.3),0 4px 20px rgba(162,28,175,.3); }
+.btn-pink:not(:disabled):hover { box-shadow:0 0 0 1px rgba(232,121,249,.5),0 6px 28px rgba(162,28,175,.4);transform:translateY(-1px); }
 
-  .stats-bar {
-    display: flex; gap: 20px; flex-wrap: wrap;
-    margin-top: 1.25rem; padding-top: 1.25rem;
-    border-top: 1px solid var(--border-dim);
-  }
-  .stat { display: flex; flex-direction: column; gap: 2px; }
-  .stat-val { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
-  .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+.btn-amber { background:linear-gradient(135deg,#d97706,#b45309);color:#fff;box-shadow:0 0 0 1px rgba(251,191,36,.3),0 4px 20px rgba(180,83,9,.3); }
+.btn-amber:not(:disabled):hover { box-shadow:0 0 0 1px rgba(251,191,36,.5),0 6px 28px rgba(180,83,9,.4);transform:translateY(-1px); }
 
-  .progress-bar-wrap { height: 2px; background: rgba(255,255,255,0.05); border-radius: 2px; margin-top: 1rem; overflow: hidden; display: none; }
-  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan)); border-radius: 2px; transition: width 0.3s ease; width: 0%; }
+.btn-cyan { background:linear-gradient(135deg,rgba(6,182,212,.2),rgba(34,211,238,.12));color:var(--cyan);border:1px solid rgba(34,211,238,.28); }
+.btn-cyan:not(:disabled):hover { background:linear-gradient(135deg,rgba(6,182,212,.3),rgba(34,211,238,.2));border-color:rgba(34,211,238,.5);box-shadow:0 0 20px rgba(34,211,238,.12); }
 
-  .glow-line {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(139,92,246,0.4), rgba(34,211,238,0.3), transparent);
-    margin: 2rem 0;
-    animation: glow-sweep 4s ease-in-out infinite;
-  }
-  @keyframes glow-sweep {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
-  }
+.btn-emerald { background:linear-gradient(135deg,rgba(16,185,129,.2),rgba(52,211,153,.12));color:var(--emerald);border:1px solid rgba(52,211,153,.28); }
+.btn-emerald:not(:disabled):hover { background:linear-gradient(135deg,rgba(16,185,129,.3),rgba(52,211,153,.2));border-color:rgba(52,211,153,.5); }
 
-  .footer {
-    text-align: center; margin-top: 3rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; color: var(--text-dim);
-    animation: fade-up 0.9s ease 0.5s both;
-  }
-  .footer a { color: var(--accent-violet); text-decoration: none; }
-  .footer a:hover { color: var(--accent-cyan); }
+.btn-ghost { background:rgba(255,255,255,.05);color:var(--text-secondary);border:1px solid var(--border-dim); }
+.btn-ghost:not(:disabled):hover { background:rgba(255,255,255,.09);color:var(--text-primary);border-color:rgba(255,255,255,.15); }
+
+.btn-dl {
+  background:rgba(52,211,153,.08);color:var(--success);
+  border:1px solid rgba(52,211,153,.2);padding:5px 12px;
+  font-size:11px;border-radius:7px;font-family:'JetBrains Mono',monospace;
+}
+.btn-dl:hover { background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.35); }
+
+.progress-wrap { height:2px;background:rgba(255,255,255,.05);border-radius:2px;margin-top:1rem;overflow:hidden;display:none; }
+
+.preview-wrap { margin-top:1.5rem;display:none;animation:fadeup .4s ease both; }
+.preview-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem; }
+.preview-label { font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase; }
+.preview-box {
+  background:rgba(0,0,0,.4);border:1px solid var(--border-dim);
+  border-radius:12px;padding:14px 16px;max-height:220px;overflow-y:auto;
+}
+.preview-box pre { font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.75;color:rgba(200,220,255,.75);white-space:pre-wrap;word-break:break-all; }
+.preview-box::-webkit-scrollbar { width:4px; }
+.preview-box::-webkit-scrollbar-thumb { background:rgba(139,92,246,.3);border-radius:2px; }
+
+.info-box {
+  background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.15);
+  border-radius:12px;padding:12px 16px;margin-top:1rem;
+  font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(251,191,36,.8);line-height:1.7;
+}
+
+.footer { text-align:center;margin-top:4rem;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);animation:fadeup .9s ease .5s both; }
+.footer a { color:var(--violet);text-decoration:none; }
+.footer a:hover { color:var(--cyan); }
 </style>
 </head>
 <body>
 
 <canvas id="galaxy-canvas"></canvas>
-<div class="nebula nebula-1"></div>
-<div class="nebula nebula-2"></div>
-<div class="nebula nebula-3"></div>
+<div class="nebula n1"></div>
+<div class="nebula n2"></div>
+<div class="nebula n3"></div>
 
 <div class="page">
 
-  <div class="header">
-    <div class="logo-ring">
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M5 7h18M5 14h18M5 21h10" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="21" cy="21" r="4" stroke="#22d3ee" stroke-width="1.5"/>
-        <path d="M19.5 21h3M21 19.5v3" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <h1>NebulaPy</h1>
-    <p class="tagline"><span class="v">.ipynb</span> &nbsp;→&nbsp; <span class="c">.py</span> &nbsp;·&nbsp; browser-native · zero upload</p>
-  </div>
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <div id="view-dashboard">
 
-  <!-- Drop Zone -->
-  <div class="card" style="animation-delay:0.1s">
-    <div class="card-title">01 — select notebooks</div>
-    <div class="drop-zone" id="dropZone">
-      <span class="drop-icon">🌌</span>
-      <div class="drop-label"><strong>Click to choose files</strong> or drag &amp; drop here</div>
-      <div class="drop-hint">*.ipynb — multiple files supported</div>
-      <input type="file" id="file-input" accept=".ipynb" multiple>
-    </div>
-    <div id="fileList" class="file-list"></div>
-    <div class="progress-bar-wrap" id="progressWrap">
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
-    <div class="stats-bar" id="statsBar" style="display:none">
-      <div class="stat"><span class="stat-val" id="statTotal">0</span><span class="stat-label">files queued</span></div>
-      <div class="stat"><span class="stat-val" id="statDone">0</span><span class="stat-label">converted</span></div>
-      <div class="stat"><span class="stat-val" id="statCells">0</span><span class="stat-label">cells processed</span></div>
-    </div>
-  </div>
-
-  <div class="glow-line"></div>
-
-  <!-- Options -->
-  <div class="card" style="animation-delay:0.2s">
-    <div class="card-title">02 — conversion options</div>
-    <div class="options-grid">
-      <label class="opt-toggle">
-        <input type="checkbox" id="opt-comments" checked>
-        <span class="opt-dot"></span>
-        <span class="opt-label">cell separators</span>
-      </label>
-      <label class="opt-toggle">
-        <input type="checkbox" id="opt-markdown" checked>
-        <span class="opt-dot"></span>
-        <span class="opt-label">markdown → comments</span>
-      </label>
-      <label class="opt-toggle">
-        <input type="checkbox" id="opt-empty">
-        <span class="opt-dot"></span>
-        <span class="opt-label">skip empty cells</span>
-      </label>
-      <label class="opt-toggle">
-        <input type="checkbox" id="opt-outputs">
-        <span class="opt-dot"></span>
-        <span class="opt-label">strip output metadata</span>
-      </label>
-    </div>
-  </div>
-
-  <div class="glow-line"></div>
-
-  <!-- Actions -->
-  <div class="card" style="animation-delay:0.3s">
-    <div class="card-title">03 — convert &amp; download</div>
-    <div class="btn-row">
-      <button class="btn btn-primary" id="convertBtn" disabled>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        Convert All
-      </button>
-      <button class="btn btn-cyan" id="downloadAllBtn" disabled>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        Download All (.zip)
-      </button>
-      <button class="btn btn-secondary" id="clearBtn" disabled>Clear</button>
-    </div>
-
-    <div class="preview-wrap" id="previewWrap">
-      <div class="preview-header">
-        <span class="preview-label">⬡ preview — last converted</span>
-        <button class="btn btn-secondary" id="copyPreviewBtn" style="padding:5px 12px;font-size:11px;border-radius:7px;">copy</button>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <path d="M4 8h24M4 16h24M4 24h14" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="25" cy="24" r="5" stroke="#22d3ee" stroke-width="1.5"/>
+          <path d="M23 24h4M25 22v4" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
       </div>
-      <div class="preview-box">
-        <pre id="previewContent"></pre>
-      </div>
+      <h1>NebulaPy Suite</h1>
+      <p class="tagline">browser-native file conversion &nbsp;·&nbsp; <em>zero upload</em> &nbsp;·&nbsp; everything runs locally</p>
     </div>
+
+    <div class="tools-grid">
+
+      <div class="tool-card" data-tool="ipynb-py" onclick="openTool('ipynb-py')" style="animation-delay:.1s">
+        <div class="tc-icon" style="background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.2);">📓</div>
+        <div class="tc-title" style="color:#c4b5fd;">.ipynb → .py</div>
+        <div class="tc-sub">Extract code &amp; markdown from Jupyter notebooks into clean Python scripts</div>
+        <span class="tc-badge badge-violet">notebook → script</span>
+      </div>
+
+      <div class="tool-card" data-tool="py-ipynb" onclick="openTool('py-ipynb')" style="animation-delay:.15s">
+        <div class="tc-icon" style="background:rgba(232,121,249,.1);border-color:rgba(232,121,249,.2);">🐍</div>
+        <div class="tc-title" style="color:#f0abfc;">.py → .ipynb</div>
+        <div class="tc-sub">Wrap Python scripts into Jupyter notebooks, splitting on section comments</div>
+        <span class="tc-badge badge-pink">script → notebook</span>
+      </div>
+
+      <div class="tool-card" data-tool="excel-csv" onclick="openTool('excel-csv')" style="animation-delay:.2s">
+        <div class="tc-icon" style="background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.2);">📊</div>
+        <div class="tc-title" style="color:#fde68a;">Excel → CSV</div>
+        <div class="tc-sub">Convert .xlsx / .xls spreadsheets to CSV files, one per sheet or merged</div>
+        <span class="tc-badge badge-amber">xlsx → csv</span>
+      </div>
+
+      <div class="tool-card" data-tool="csv-excel" onclick="openTool('csv-excel')" style="animation-delay:.25s">
+        <div class="tc-icon" style="background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.2);">📋</div>
+        <div class="tc-title" style="color:#fde68a;">CSV → Excel</div>
+        <div class="tc-sub">Pack one or more CSV files into a single .xlsx workbook, each as a sheet</div>
+        <span class="tc-badge badge-amber">csv → xlsx</span>
+      </div>
+
+      <div class="tool-card" data-tool="img-pdf" onclick="openTool('img-pdf')" style="animation-delay:.3s">
+        <div class="tc-icon" style="background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.2);">🖼️</div>
+        <div class="tc-title" style="color:#67e8f9;">Image → PDF</div>
+        <div class="tc-sub">Bundle JPG / PNG / WebP images into a single PDF document</div>
+        <span class="tc-badge badge-cyan">img → pdf</span>
+      </div>
+
+      <div class="tool-card" data-tool="docx-pdf" onclick="openTool('docx-pdf')" style="animation-delay:.35s">
+        <div class="tc-icon" style="background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.2);">📄</div>
+        <div class="tc-title" style="color:#6ee7b7;">DOCX → PDF</div>
+        <div class="tc-sub">Render Word documents to PDF using browser print engine — no server needed</div>
+        <span class="tc-badge badge-emerald">docx → pdf</span>
+      </div>
+
+    </div>
+
+    <div class="footer" style="margin-top:3rem;">
+      <p>NebulaPy Suite &nbsp;·&nbsp; all processing is local &nbsp;·&nbsp; no data ever leaves your browser</p>
+      <p style="margin-top:6px;">host free on <a href="https://pages.github.com" target="_blank">GitHub Pages</a></p>
+    </div>
+
+  </div><!-- /dashboard -->
+
+
+  <!-- ══════════ TOOL VIEW ══════════ -->
+  <div id="view-tool">
+    <div class="tool-header">
+      <button class="back-btn" onclick="goBack()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Suite
+      </button>
+      <div class="tool-name" id="toolTitle"></div>
+    </div>
+    <div id="tool-content"></div>
   </div>
 
-  <div class="footer">
-    <p>NebulaPy &nbsp;·&nbsp; all processing is local &nbsp;·&nbsp; no data leaves your browser</p>
-    <p style="margin-top:6px;">host on <a href="https://pages.github.com" target="_blank">GitHub Pages</a> for free</p>
-  </div>
+</div><!-- /page -->
 
+
+<!-- ════════════════════════════════════════════
+     TOOL TEMPLATES (hidden)
+════════════════════════════════════════════ -->
+
+<!-- T1: ipynb → py -->
+<template id="tpl-ipynb-py">
+<div class="card" style="animation-delay:.05s">
+  <div class="card-title ct-violet">01 — select notebooks</div>
+  <div class="drop-zone dz-violet" id="dz1" onclick="document.getElementById('fi1').click()">
+    <span class="drop-icon">🌌</span>
+    <div class="drop-label"><strong>Click to choose</strong> or drag &amp; drop</div>
+    <div class="drop-hint">*.ipynb — multiple supported</div>
+    <input type="file" id="fi1" accept=".ipynb" multiple style="display:none">
+  </div>
+  <div id="fl1" class="file-list"></div>
+  <div class="progress-wrap" id="pw1"><div id="pb1" style="height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#22d3ee);border-radius:2px;transition:width .3s"></div></div>
+  <div class="stats-bar" id="sb1" style="display:none">
+    <div class="stat"><span class="stat-val" id="s1t">0</span><span class="stat-label">queued</span></div>
+    <div class="stat"><span class="stat-val" id="s1d">0</span><span class="stat-label">done</span></div>
+    <div class="stat"><span class="stat-val" id="s1c">0</span><span class="stat-label">cells</span></div>
+  </div>
 </div>
 
+<div class="glow-line"></div>
+
+<div class="card ot-violet" style="animation-delay:.1s">
+  <div class="card-title ct-violet">02 — options</div>
+  <div class="options-grid">
+    <label class="opt-toggle"><input type="checkbox" id="o1-sep" checked><span class="opt-dot"></span><span class="opt-label">cell separators</span></label>
+    <label class="opt-toggle"><input type="checkbox" id="o1-md" checked><span class="opt-dot"></span><span class="opt-label">markdown → comments</span></label>
+    <label class="opt-toggle"><input type="checkbox" id="o1-empty"><span class="opt-dot"></span><span class="opt-label">skip empty cells</span></label>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card" style="animation-delay:.15s">
+  <div class="card-title ct-violet">03 — convert</div>
+  <div class="btn-row">
+    <button class="btn btn-violet" id="cb1" disabled onclick="runIpynbToPy()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Convert All
+    </button>
+    <button class="btn btn-cyan" id="da1" disabled onclick="dlAll1()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Download All
+    </button>
+    <button class="btn btn-ghost" id="cl1" disabled onclick="clearTool1()">Clear</button>
+  </div>
+  <div class="preview-wrap" id="prv1">
+    <div class="preview-header">
+      <span class="preview-label" style="color:var(--violet);">⬡ preview</span>
+      <button class="btn btn-ghost" onclick="copyPrev('pc1')" style="padding:5px 12px;font-size:11px;border-radius:7px;" id="cpb1">copy</button>
+    </div>
+    <div class="preview-box"><pre id="pc1"></pre></div>
+  </div>
+</div>
+</template>
+
+<!-- T2: py → ipynb -->
+<template id="tpl-py-ipynb">
+<div class="card" style="animation-delay:.05s">
+  <div class="card-title ct-pink">01 — select python files</div>
+  <div class="drop-zone dz-pink" id="dz2" onclick="document.getElementById('fi2').click()">
+    <span class="drop-icon">🐍</span>
+    <div class="drop-label"><strong>Click to choose</strong> or drag &amp; drop</div>
+    <div class="drop-hint">*.py — multiple supported</div>
+    <input type="file" id="fi2" accept=".py" multiple style="display:none">
+  </div>
+  <div id="fl2" class="file-list"></div>
+  <div class="progress-wrap" id="pw2"><div id="pb2" style="height:100%;width:0%;background:linear-gradient(90deg,#a21caf,#e879f9);border-radius:2px;transition:width .3s"></div></div>
+  <div class="stats-bar" id="sb2" style="display:none">
+    <div class="stat"><span class="stat-val" id="s2t">0</span><span class="stat-label">queued</span></div>
+    <div class="stat"><span class="stat-val" id="s2d">0</span><span class="stat-label">done</span></div>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card ot-pink" style="animation-delay:.1s">
+  <div class="card-title ct-pink">02 — options</div>
+  <div class="options-grid">
+    <label class="opt-toggle"><input type="checkbox" id="o2-split" checked><span class="opt-dot"></span><span class="opt-label">split on # ─── comments</span></label>
+    <label class="opt-toggle"><input type="checkbox" id="o2-md" checked><span class="opt-dot"></span><span class="opt-label">convert # comments → markdown cells</span></label>
+    <label class="opt-toggle"><input type="checkbox" id="o2-meta" checked><span class="opt-dot"></span><span class="opt-label">add kernel metadata</span></label>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card" style="animation-delay:.15s">
+  <div class="card-title ct-pink">03 — convert</div>
+  <div class="btn-row">
+    <button class="btn btn-pink" id="cb2" disabled onclick="runPyToIpynb()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Convert All
+    </button>
+    <button class="btn btn-cyan" id="da2" disabled onclick="dlAll2()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Download All
+    </button>
+    <button class="btn btn-ghost" id="cl2" disabled onclick="clearTool2()">Clear</button>
+  </div>
+</div>
+</template>
+
+<!-- T3: Excel → CSV -->
+<template id="tpl-excel-csv">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<div class="card" style="animation-delay:.05s">
+  <div class="card-title ct-amber">01 — select spreadsheets</div>
+  <div class="drop-zone dz-amber" id="dz3" onclick="document.getElementById('fi3').click()">
+    <span class="drop-icon">📊</span>
+    <div class="drop-label"><strong>Click to choose</strong> or drag &amp; drop</div>
+    <div class="drop-hint">*.xlsx, *.xls — multiple supported</div>
+    <input type="file" id="fi3" accept=".xlsx,.xls" multiple style="display:none">
+  </div>
+  <div id="fl3" class="file-list"></div>
+  <div class="stats-bar" id="sb3" style="display:none">
+    <div class="stat"><span class="stat-val" id="s3t">0</span><span class="stat-label">files</span></div>
+    <div class="stat"><span class="stat-val" id="s3d">0</span><span class="stat-label">done</span></div>
+    <div class="stat"><span class="stat-val" id="s3s">0</span><span class="stat-label">sheets</span></div>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card ot-amber" style="animation-delay:.1s">
+  <div class="card-title ct-amber">02 — options</div>
+  <div class="options-grid">
+    <label class="opt-toggle"><input type="checkbox" id="o3-all" checked><span class="opt-dot"></span><span class="opt-label">export all sheets</span></label>
+    <label class="opt-toggle"><input type="checkbox" id="o3-header" checked><span class="opt-dot"></span><span class="opt-label">include headers</span></label>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card" style="animation-delay:.15s">
+  <div class="card-title ct-amber">03 — convert</div>
+  <div class="btn-row">
+    <button class="btn btn-amber" id="cb3" disabled onclick="runExcelToCsv()">Convert All</button>
+    <button class="btn btn-cyan" id="da3" disabled onclick="dlAll3()">Download All</button>
+    <button class="btn btn-ghost" id="cl3" disabled onclick="clearTool3()">Clear</button>
+  </div>
+</div>
+</template>
+
+<!-- T4: CSV → Excel -->
+<template id="tpl-csv-excel">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<div class="card" style="animation-delay:.05s">
+  <div class="card-title ct-amber">01 — select CSV files</div>
+  <div class="drop-zone dz-amber" id="dz4" onclick="document.getElementById('fi4').click()">
+    <span class="drop-icon">📋</span>
+    <div class="drop-label"><strong>Click to choose</strong> or drag &amp; drop</div>
+    <div class="drop-hint">*.csv — each file becomes a sheet</div>
+    <input type="file" id="fi4" accept=".csv" multiple style="display:none">
+  </div>
+  <div id="fl4" class="file-list"></div>
+  <div class="stats-bar" id="sb4" style="display:none">
+    <div class="stat"><span class="stat-val" id="s4t">0</span><span class="stat-label">files</span></div>
+    <div class="stat"><span class="stat-val" id="s4d">0</span><span class="stat-label">sheets ready</span></div>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card ot-amber" style="animation-delay:.1s">
+  <div class="card-title ct-amber">02 — options</div>
+  <div class="options-grid">
+    <label class="opt-toggle"><input type="checkbox" id="o4-one" checked><span class="opt-dot"></span><span class="opt-label">combine into one workbook</span></label>
+    <label class="opt-toggle"><input type="checkbox" id="o4-freeze" checked><span class="opt-dot"></span><span class="opt-label">freeze header row</span></label>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card" style="animation-delay:.15s">
+  <div class="card-title ct-amber">03 — convert</div>
+  <div class="btn-row">
+    <button class="btn btn-amber" id="cb4" disabled onclick="runCsvToExcel()">Convert</button>
+    <button class="btn btn-ghost" id="cl4" disabled onclick="clearTool4()">Clear</button>
+  </div>
+</div>
+</template>
+
+<!-- T5: Image → PDF -->
+<template id="tpl-img-pdf">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<div class="card" style="animation-delay:.05s">
+  <div class="card-title ct-cyan">01 — select images</div>
+  <div class="drop-zone dz-cyan" id="dz5" onclick="document.getElementById('fi5').click()">
+    <span class="drop-icon">🖼️</span>
+    <div class="drop-label"><strong>Click to choose</strong> or drag &amp; drop</div>
+    <div class="drop-hint">*.jpg, *.jpeg, *.png, *.webp — order matters (drag to reorder below)</div>
+    <input type="file" id="fi5" accept="image/jpeg,image/png,image/webp" multiple style="display:none">
+  </div>
+  <div id="fl5" class="file-list"></div>
+  <div class="stats-bar" id="sb5" style="display:none">
+    <div class="stat"><span class="stat-val" id="s5t">0</span><span class="stat-label">images</span></div>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card ot-cyan" style="animation-delay:.1s">
+  <div class="card-title ct-cyan">02 — options</div>
+  <div class="options-grid">
+    <label class="opt-toggle"><input type="checkbox" id="o5-fit" checked><span class="opt-dot"></span><span class="opt-label">fit image to page</span></label>
+    <label class="opt-toggle"><input type="checkbox" id="o5-land"><span class="opt-dot"></span><span class="opt-label">landscape mode</span></label>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card" style="animation-delay:.15s">
+  <div class="card-title ct-cyan">03 — build PDF</div>
+  <div class="btn-row">
+    <button class="btn btn-cyan" id="cb5" disabled onclick="runImgToPdf()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Build PDF
+    </button>
+    <button class="btn btn-ghost" id="cl5" disabled onclick="clearTool5()">Clear</button>
+  </div>
+  <div id="pdfStatus5" style="margin-top:1rem;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim);display:none;"></div>
+</div>
+</template>
+
+<!-- T6: DOCX → PDF -->
+<template id="tpl-docx-pdf">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<div class="info-box">
+  ⚠ &nbsp;Browser-native conversion: layout &amp; fonts may differ from Word. For pixel-perfect output, use a desktop tool or cloud service.
+</div>
+<div class="card" style="animation-delay:.05s;margin-top:1rem;">
+  <div class="card-title ct-emerald">01 — select document</div>
+  <div class="drop-zone dz-emerald" id="dz6" onclick="document.getElementById('fi6').click()">
+    <span class="drop-icon">📄</span>
+    <div class="drop-label"><strong>Click to choose</strong> or drag &amp; drop</div>
+    <div class="drop-hint">*.docx — one file at a time</div>
+    <input type="file" id="fi6" accept=".docx" style="display:none">
+  </div>
+  <div id="fl6" class="file-list"></div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card ot-emerald" style="animation-delay:.1s">
+  <div class="card-title ct-emerald">02 — options</div>
+  <div class="options-grid">
+    <label class="opt-toggle"><input type="checkbox" id="o6-pg" checked><span class="opt-dot"></span><span class="opt-label">A4 page size</span></label>
+    <label class="opt-toggle"><input type="checkbox" id="o6-img" checked><span class="opt-dot"></span><span class="opt-label">include images</span></label>
+  </div>
+</div>
+
+<div class="glow-line"></div>
+
+<div class="card" style="animation-delay:.15s">
+  <div class="card-title ct-emerald">03 — convert &amp; print to PDF</div>
+  <div class="btn-row">
+    <button class="btn btn-emerald" id="cb6" disabled onclick="runDocxToPdf()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Open Print Dialog
+    </button>
+    <button class="btn btn-ghost" id="cl6" disabled onclick="clearTool6()">Clear</button>
+  </div>
+  <div id="docStatus" style="margin-top:1rem;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim);display:none;"></div>
+</div>
+</template>
+
+
+<!-- ════ SCRIPTS ════ -->
 <script>
 // ── Star field ──
-const canvas = document.getElementById('galaxy-canvas');
-const ctx = canvas.getContext('2d');
-let stars = [], W, H;
-
-function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-resize();
-window.addEventListener('resize', () => { resize(); initStars(); });
-
-function initStars() {
-  stars = [];
-  const count = Math.floor((W * H) / 4500);
-  for (let i = 0; i < count; i++) {
-    const t = Math.random();
-    stars.push({
-      x: Math.random() * W, y: Math.random() * H,
-      r: Math.random() * (t < 0.7 ? 0.8 : t < 0.9 ? 1.4 : 2.2),
-      a: Math.random(), speed: 0.003 + Math.random() * 0.008,
-      phase: Math.random() * Math.PI * 2,
-      color: t < 0.6 ? 'rgba(255,255,255,' : t < 0.8 ? 'rgba(180,160,255,' : 'rgba(120,200,255,',
-    });
+const cvs = document.getElementById('galaxy-canvas');
+const ctx2 = cvs.getContext('2d');
+let stars=[], W, H;
+function rsz(){ W=cvs.width=window.innerWidth; H=cvs.height=window.innerHeight; }
+rsz(); window.addEventListener('resize',()=>{ rsz(); initS(); });
+function initS(){
+  stars=[];
+  const n=Math.floor((W*H)/4500);
+  for(let i=0;i<n;i++){
+    const t=Math.random();
+    stars.push({x:Math.random()*W,y:Math.random()*H,
+      r:Math.random()*(t<.7?.8:t<.9?1.4:2.2),
+      a:Math.random(),sp:.003+Math.random()*.008,ph:Math.random()*Math.PI*2,
+      col:t<.6?'rgba(255,255,255,':t<.8?'rgba(180,160,255,':'rgba(120,200,255,'});
   }
 }
-initStars();
-
-let frame = 0;
-function drawStars() {
-  ctx.clearRect(0, 0, W, H);
-  frame += 0.016;
-  stars.forEach(s => {
-    const flicker = s.a * (0.5 + 0.5 * Math.sin(frame * s.speed * 60 + s.phase));
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fillStyle = s.color + flicker + ')';
-    ctx.fill();
+initS();
+let fr=0;
+function drawS(){
+  ctx2.clearRect(0,0,W,H); fr+=.016;
+  stars.forEach(s=>{
+    const fl=s.a*(.5+.5*Math.sin(fr*s.sp*60+s.ph));
+    ctx2.beginPath(); ctx2.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx2.fillStyle=s.col+fl+')'; ctx2.fill();
   });
-  const grd = ctx.createLinearGradient(0, H * 0.3, W, H * 0.7);
-  grd.addColorStop(0, 'transparent');
-  grd.addColorStop(0.4, 'rgba(100,70,180,0.025)');
-  grd.addColorStop(0.5, 'rgba(60,100,200,0.04)');
-  grd.addColorStop(0.6, 'rgba(100,70,180,0.025)');
-  grd.addColorStop(1, 'transparent');
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, W, H);
-  requestAnimationFrame(drawStars);
+  requestAnimationFrame(drawS);
 }
-drawStars();
+drawS();
 
-// ── App ──
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('file-input');
-const fileListEl = document.getElementById('fileList');
-const convertBtn = document.getElementById('convertBtn');
-const clearBtn = document.getElementById('clearBtn');
-const downloadAllBtn = document.getElementById('downloadAllBtn');
-const previewWrap = document.getElementById('previewWrap');
-const previewContent = document.getElementById('previewContent');
-const copyPreviewBtn = document.getElementById('copyPreviewBtn');
-const statsBar = document.getElementById('statsBar');
-const progressWrap = document.getElementById('progressWrap');
-const progressBar = document.getElementById('progressBar');
+// ── Navigation ──
+const toolMeta = {
+  'ipynb-py':  { title:'ipynb → py',  cls:'violet' },
+  'py-ipynb':  { title:'py → ipynb',  cls:'pink'   },
+  'excel-csv': { title:'Excel → CSV', cls:'amber'  },
+  'csv-excel': { title:'CSV → Excel', cls:'amber'  },
+  'img-pdf':   { title:'Image → PDF', cls:'cyan'   },
+  'docx-pdf':  { title:'DOCX → PDF',  cls:'emerald'},
+};
 
-let files = [], converted = {}, totalCells = 0;
+let currentTool = null;
 
-function updateStats() {
-  const done = Object.keys(converted).length;
-  if (files.length) {
-    statsBar.style.display = 'flex';
-    document.getElementById('statTotal').textContent = files.length;
-    document.getElementById('statDone').textContent = done;
-    document.getElementById('statCells').textContent = totalCells;
-  } else {
-    statsBar.style.display = 'none';
-  }
+function openTool(id) {
+  currentTool = id;
+  const meta = toolMeta[id];
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-tool').style.display = 'block';
+  const ttl = document.getElementById('toolTitle');
+  ttl.textContent = meta.title;
+  ttl.className = 'tool-name ' + meta.cls;
+  const tpl = document.getElementById('tpl-' + id);
+  const content = document.getElementById('tool-content');
+  content.innerHTML = '';
+  content.appendChild(tpl.content.cloneNode(true));
+  wireDropzone(id);
+  window.scrollTo(0,0);
 }
 
-dropZone.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', e => addFiles(Array.from(e.target.files)));
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
-dropZone.addEventListener('dragleave', e => { if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('over'); });
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('over');
-  addFiles(Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.ipynb')));
-});
-
-function addFiles(newFiles) {
-  newFiles.forEach(f => { if (!files.find(x => x.name === f.name && x.size === f.size)) files.push(f); });
-  renderList();
+function goBack() {
+  document.getElementById('view-dashboard').style.display = 'block';
+  document.getElementById('view-tool').style.display = 'none';
+  document.getElementById('tool-content').innerHTML = '';
+  currentTool = null;
 }
 
-function renderList() {
-  fileListEl.innerHTML = '';
-  const hasFiles = files.length > 0;
-  convertBtn.disabled = !hasFiles;
-  clearBtn.disabled = !hasFiles;
-  if (!hasFiles) { updateStats(); return; }
-  files.forEach((f, i) => {
-    const done = !!converted[f.name];
-    const item = document.createElement('div');
-    item.className = 'file-item';
-    item.innerHTML = `
-      <span class="file-icon">📄</span>
-      <span class="file-name" title="${f.name}">${f.name}</span>
-      <span class="file-size">${(f.size/1024).toFixed(1)} KB</span>
-      <span class="badge ${done ? 'badge-done' : 'badge-ready'}">${done ? 'done' : 'ready'}</span>
-      ${done ? `<button class="btn btn-dl-single" onclick="downloadOne('${f.name}')">↓ .py</button>` : ''}
-      <button class="btn-remove" onclick="removeFile(${i})" title="remove">✕</button>
-    `;
-    fileListEl.appendChild(item);
+// ── Generic drag wiring ──
+function wireDropzone(id) {
+  const map = { 'ipynb-py':'dz1','py-ipynb':'dz2','excel-csv':'dz3','csv-excel':'dz4','img-pdf':'dz5','docx-pdf':'dz6' };
+  const fiMap = { 'ipynb-py':'fi1','py-ipynb':'fi2','excel-csv':'fi3','csv-excel':'fi4','img-pdf':'fi5','docx-pdf':'fi6' };
+  const dz = document.getElementById(map[id]);
+  const fi = document.getElementById(fiMap[id]);
+  if (!dz || !fi) return;
+  dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', e=>{ if(!dz.contains(e.relatedTarget)) dz.classList.remove('over'); });
+  dz.addEventListener('drop', e=>{
+    e.preventDefault(); dz.classList.remove('over');
+    const files = Array.from(e.dataTransfer.files);
+    const handler = dropHandlers[id];
+    if (handler) handler(files);
   });
-  updateStats();
+  fi.addEventListener('change', e=>{
+    const handler = dropHandlers[id];
+    if (handler) handler(Array.from(e.target.files));
+  });
 }
 
-function removeFile(i) {
-  const name = files[i].name;
-  delete converted[name];
-  files.splice(i, 1);
-  downloadAllBtn.disabled = Object.keys(converted).length < 1;
-  if (!files.length) previewWrap.style.display = 'none';
-  renderList();
+function fmtSz(b){ return b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB'; }
+function copyPrev(id){ navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>{}); }
+
+// ─────────────────────────────────────────────
+// TOOL 1: ipynb → py
+// ─────────────────────────────────────────────
+let t1files=[], t1conv={}, t1cells=0;
+const dropHandlers = {};
+
+dropHandlers['ipynb-py'] = function(newF) {
+  newF.forEach(f=>{ if(f.name.endsWith('.ipynb')&&!t1files.find(x=>x.name===f.name)) t1files.push(f); });
+  renderT1();
+};
+
+function renderT1(){
+  const fl=document.getElementById('fl1');
+  if(!fl) return;
+  fl.innerHTML='';
+  const has=t1files.length>0;
+  document.getElementById('cb1').disabled=!has;
+  document.getElementById('cl1').disabled=!has;
+  const sb=document.getElementById('sb1');
+  if(has){ sb.style.display='flex'; document.getElementById('s1t').textContent=t1files.length; document.getElementById('s1d').textContent=Object.keys(t1conv).length; document.getElementById('s1c').textContent=t1cells; }
+  else sb.style.display='none';
+  t1files.forEach((f,i)=>{
+    const done=!!t1conv[f.name];
+    const d=document.createElement('div'); d.className='file-item';
+    d.innerHTML=`<span class="file-icon">📄</span><span class="file-name" title="${f.name}">${f.name}</span><span class="file-size">${fmtSz(f.size)}</span><span class="fbadge ${done?'fb-done':'fb-ready'}">${done?'done':'ready'}</span>${done?`<button class="btn btn-dl" onclick="dlOne1('${f.name}')">↓ .py</button>`:''}<button class="btn-rm" onclick="rmT1(${i})">✕</button>`;
+    fl.appendChild(d);
+  });
 }
 
-clearBtn.addEventListener('click', () => {
-  files = []; converted = {}; totalCells = 0;
-  renderList();
-  downloadAllBtn.disabled = true;
-  previewWrap.style.display = 'none';
-  progressWrap.style.display = 'none';
-});
+function rmT1(i){ delete t1conv[t1files[i].name]; t1files.splice(i,1); renderT1(); const da=document.getElementById('da1'); if(da) da.disabled=Object.keys(t1conv).length<1; }
+function clearTool1(){ t1files=[];t1conv={};t1cells=0; renderT1(); const da=document.getElementById('da1'); if(da) da.disabled=true; const p=document.getElementById('prv1'); if(p) p.style.display='none'; }
 
-function convertNotebook(text, filename) {
-  const incSep = document.getElementById('opt-comments').checked;
-  const incMd = document.getElementById('opt-markdown').checked;
-  const skipEmpty = document.getElementById('opt-empty').checked;
-  let nb;
-  try { nb = JSON.parse(text); } catch(e) { return null; }
-  const cells = nb.cells || (nb.worksheets && nb.worksheets[0] && nb.worksheets[0].cells) || [];
-  const lines = [
+function convertNb(text, fname){
+  const sep=document.getElementById('o1-sep')?.checked;
+  const md=document.getElementById('o1-md')?.checked;
+  const skip=document.getElementById('o1-empty')?.checked;
+  let nb; try{ nb=JSON.parse(text); }catch(e){ return null; }
+  const cells=nb.cells||(nb.worksheets&&nb.worksheets[0]&&nb.worksheets[0].cells)||[];
+  const lines=[
     `# ╔══════════════════════════════════════════════╗`,
-    `# ║  converted by NebulaPy                      ║`,
-    `# ║  source: ${filename.slice(0,38).padEnd(38)}║`,
-    `# ╚══════════════════════════════════════════════╝`,
-    ``
+    `# ║  converted by NebulaPy Suite                ║`,
+    `# ║  source: ${fname.slice(0,38).padEnd(38)}║`,
+    `# ╚══════════════════════════════════════════════╝`,``
   ];
-  let cellNum = 0, processed = 0;
-  cells.forEach(cell => {
-    const type = cell.cell_type;
-    const src = Array.isArray(cell.source) ? cell.source.join('') : (cell.source || '');
-    if (skipEmpty && !src.trim()) return;
-    processed++;
-    if (type === 'code') {
-      cellNum++;
-      if (incSep) lines.push(`# ─── cell [${cellNum}] ${'─'.repeat(40)}`);
-      lines.push(src.trimEnd(), '');
-    } else if (type === 'markdown' && incMd) {
-      cellNum++;
-      if (incSep) lines.push(`# ─── markdown [${cellNum}] ${'─'.repeat(36)}`);
-      src.split('\n').forEach(l => lines.push(`# ${l}`));
-      lines.push('');
-    } else if (type === 'raw') {
-      if (incSep) lines.push(`# ─── raw cell ${'─'.repeat(39)}`);
-      src.split('\n').forEach(l => lines.push(`# ${l}`));
-      lines.push('');
-    }
+  let cn=0, proc=0;
+  cells.forEach(cell=>{
+    const type=cell.cell_type;
+    const src=Array.isArray(cell.source)?cell.source.join(''):(cell.source||'');
+    if(skip&&!src.trim()) return;
+    proc++;
+    if(type==='code'){ cn++; if(sep) lines.push(`# ─── cell [${cn}] ${'─'.repeat(40)}`); lines.push(src.trimEnd(),''); }
+    else if(type==='markdown'&&md){ cn++; if(sep) lines.push(`# ─── markdown [${cn}] ${'─'.repeat(36)}`); src.split('\n').forEach(l=>lines.push(`# ${l}`)); lines.push(''); }
+    else if(type==='raw'){ if(sep) lines.push(`# ─── raw ${'─'.repeat(44)}`); src.split('\n').forEach(l=>lines.push(`# ${l}`)); lines.push(''); }
   });
-  totalCells += processed;
+  t1cells+=proc;
   return lines.join('\n');
 }
 
-convertBtn.addEventListener('click', async () => {
-  convertBtn.disabled = true;
-  convertBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg> Converting...`;
-  progressWrap.style.display = 'block';
-  totalCells = 0;
-
-  for (let i = 0; i < files.length; i++) {
-    progressBar.style.width = ((i / files.length) * 100) + '%';
-    const text = await files[i].text();
-    const py = convertNotebook(text, files[i].name);
-    if (py !== null) {
-      converted[files[i].name] = py;
-      previewContent.textContent = py.slice(0, 3000) + (py.length > 3000 ? '\n\n# ... (truncated preview)' : '');
-      previewWrap.style.display = 'block';
-    }
+async function runIpynbToPy(){
+  const cb=document.getElementById('cb1'); cb.disabled=true; cb.textContent='Converting…';
+  const pw=document.getElementById('pw1'); pw.style.display='block';
+  const pb=document.getElementById('pb1'); t1cells=0;
+  for(let i=0;i<t1files.length;i++){
+    pb.style.width=((i/t1files.length)*100)+'%';
+    const txt=await t1files[i].text();
+    const py=convertNb(txt, t1files[i].name);
+    if(py!==null){ t1conv[t1files[i].name]=py; const pc=document.getElementById('pc1'); if(pc){ pc.textContent=py.slice(0,3000)+(py.length>3000?'\n\n# … (truncated)':''); const p=document.getElementById('prv1'); if(p) p.style.display='block'; } }
   }
-
-  progressBar.style.width = '100%';
-  setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 800);
-
-  convertBtn.disabled = false;
-  convertBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Convert All`;
-  downloadAllBtn.disabled = Object.keys(converted).length < 1;
-  renderList();
-});
-
-function downloadOne(name) {
-  const py = converted[name];
-  if (!py) return;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([py], { type: 'text/x-python' }));
-  a.download = name.replace('.ipynb', '.py');
-  a.click();
+  pb.style.width='100%'; setTimeout(()=>{ pw.style.display='none'; pb.style.width='0%'; },800);
+  cb.disabled=false; cb.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Convert All`;
+  const da=document.getElementById('da1'); if(da) da.disabled=Object.keys(t1conv).length<1;
+  renderT1();
 }
 
-downloadAllBtn.addEventListener('click', async () => {
-  const entries = Object.entries(converted);
-  if (entries.length === 1) { downloadOne(entries[0][0]); return; }
-  const zip = new JSZip();
-  entries.forEach(([name, py]) => zip.file(name.replace('.ipynb', '.py'), py));
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'nebulapy_converted.zip';
-  a.click();
-});
+function dlOne1(name){ const py=t1conv[name]; if(!py) return; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([py],{type:'text/x-python'})); a.download=name.replace('.ipynb','.py'); a.click(); }
 
-copyPreviewBtn.addEventListener('click', () => {
-  navigator.clipboard.writeText(previewContent.textContent).then(() => {
-    copyPreviewBtn.textContent = 'copied!';
-    setTimeout(() => { copyPreviewBtn.textContent = 'copy'; }, 1800);
+async function dlAll1(){
+  const ents=Object.entries(t1conv); if(!ents.length) return;
+  if(ents.length===1){ dlOne1(ents[0][0]); return; }
+  const zip=new JSZip(); ents.forEach(([n,py])=>zip.file(n.replace('.ipynb','.py'),py));
+  const blob=await zip.generateAsync({type:'blob'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='nebulapy_notebooks.zip'; a.click();
+}
+
+// ─────────────────────────────────────────────
+// TOOL 2: py → ipynb
+// ─────────────────────────────────────────────
+let t2files=[], t2conv={};
+
+dropHandlers['py-ipynb'] = function(newF){
+  newF.forEach(f=>{ if(f.name.endsWith('.py')&&!t2files.find(x=>x.name===f.name)) t2files.push(f); });
+  renderT2();
+};
+
+function renderT2(){
+  const fl=document.getElementById('fl2'); if(!fl) return;
+  fl.innerHTML='';
+  const has=t2files.length>0;
+  document.getElementById('cb2').disabled=!has;
+  document.getElementById('cl2').disabled=!has;
+  const sb=document.getElementById('sb2');
+  if(has){ sb.style.display='flex'; document.getElementById('s2t').textContent=t2files.length; document.getElementById('s2d').textContent=Object.keys(t2conv).length; }
+  else sb.style.display='none';
+  t2files.forEach((f,i)=>{
+    const done=!!t2conv[f.name];
+    const d=document.createElement('div'); d.className='file-item';
+    d.innerHTML=`<span class="file-icon">🐍</span><span class="file-name">${f.name}</span><span class="file-size">${fmtSz(f.size)}</span><span class="fbadge ${done?'fb-done':'fb-ready'}">${done?'done':'ready'}</span>${done?`<button class="btn btn-dl" onclick="dlOne2('${f.name}')">↓ .ipynb</button>`:''}<button class="btn-rm" onclick="rmT2(${i})">✕</button>`;
+    fl.appendChild(d);
   });
-});
+}
+
+function rmT2(i){ delete t2conv[t2files[i].name]; t2files.splice(i,1); renderT2(); }
+function clearTool2(){ t2files=[];t2conv={}; renderT2(); const da=document.getElementById('da2'); if(da) da.disabled=true; }
+
+function pyToIpynb(src, fname){
+  const splitOnComments=document.getElementById('o2-split')?.checked;
+  const mdComments=document.getElementById('o2-md')?.checked;
+  const addMeta=document.getElementById('o2-meta')?.checked;
+  const lines=src.split('\n');
+  const chunks=[];
+  let buf=[];
+  const SEP=/^#\s*[─━=\-]{3,}/;
+  lines.forEach(l=>{
+    if(splitOnComments && SEP.test(l) && buf.length>0){ chunks.push(buf.join('\n')); buf=[]; }
+    else buf.push(l);
+  });
+  if(buf.length) chunks.push(buf.join('\n'));
+  const cells=chunks.map(chunk=>{
+    const trimmed=chunk.trim();
+    if(!trimmed) return null;
+    const allComment=trimmed.split('\n').every(l=>l.trim()===''||l.trim().startsWith('#'));
+    if(mdComments && allComment){
+      const mdSrc=trimmed.split('\n').map(l=>l.replace(/^#\s?/,'')).join('\n');
+      return { cell_type:'markdown', metadata:{}, source:mdSrc.split('\n').map((l,i,a)=>i<a.length-1?l+'\n':l) };
+    }
+    return { cell_type:'code', execution_count:null, metadata:{}, outputs:[], source:chunk.split('\n').map((l,i,a)=>i<a.length-1?l+'\n':l) };
+  }).filter(Boolean);
+  const nb={
+    nbformat:4, nbformat_minor:5,
+    cells,
+    metadata: addMeta ? { kernelspec:{display_name:'Python 3',language:'python',name:'python3'}, language_info:{name:'python',version:'3.10.0'} } : {}
+  };
+  return JSON.stringify(nb, null, 2);
+}
+
+async function runPyToIpynb(){
+  const cb=document.getElementById('cb2'); cb.disabled=true; cb.textContent='Converting…';
+  for(let i=0;i<t2files.length;i++){
+    const txt=await t2files[i].text();
+    t2conv[t2files[i].name]=pyToIpynb(txt,t2files[i].name);
+  }
+  cb.disabled=false; cb.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Convert All`;
+  const da=document.getElementById('da2'); if(da) da.disabled=Object.keys(t2conv).length<1;
+  renderT2();
+}
+
+function dlOne2(name){ const nb=t2conv[name]; if(!nb) return; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([nb],{type:'application/json'})); a.download=name.replace('.py','.ipynb'); a.click(); }
+
+async function dlAll2(){
+  const ents=Object.entries(t2conv); if(!ents.length) return;
+  if(ents.length===1){ dlOne2(ents[0][0]); return; }
+  const zip=new JSZip(); ents.forEach(([n,nb])=>zip.file(n.replace('.py','.ipynb'),nb));
+  const blob=await zip.generateAsync({type:'blob'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='nebulapy_notebooks.zip'; a.click();
+}
+
+// ─────────────────────────────────────────────
+// TOOL 3: Excel → CSV
+// ─────────────────────────────────────────────
+let t3files=[], t3conv={}, t3sheets=0;
+
+dropHandlers['excel-csv'] = function(newF){
+  newF.forEach(f=>{ if((f.name.endsWith('.xlsx')||f.name.endsWith('.xls'))&&!t3files.find(x=>x.name===f.name)) t3files.push(f); });
+  renderT3();
+};
+
+function renderT3(){
+  const fl=document.getElementById('fl3'); if(!fl) return;
+  fl.innerHTML='';
+  const has=t3files.length>0;
+  document.getElementById('cb3').disabled=!has;
+  document.getElementById('cl3').disabled=!has;
+  const sb=document.getElementById('sb3');
+  if(has){ sb.style.display='flex'; document.getElementById('s3t').textContent=t3files.length; document.getElementById('s3d').textContent=Object.keys(t3conv).length; document.getElementById('s3s').textContent=t3sheets; }
+  else sb.style.display='none';
+  t3files.forEach((f,i)=>{
+    const done=t3conv[f.name]&&t3conv[f.name].length>0;
+    const d=document.createElement('div'); d.className='file-item';
+    d.innerHTML=`<span class="file-icon">📊</span><span class="file-name">${f.name}</span><span class="file-size">${fmtSz(f.size)}</span><span class="fbadge ${done?'fb-done':'fb-ready'}">${done?'done':'ready'}</span><button class="btn-rm" onclick="rmT3(${i})">✕</button>`;
+    fl.appendChild(d);
+  });
+}
+
+function rmT3(i){ delete t3conv[t3files[i].name]; t3files.splice(i,1); renderT3(); }
+function clearTool3(){ t3files=[];t3conv={};t3sheets=0; renderT3(); const da=document.getElementById('da3'); if(da) da.disabled=true; }
+
+async function runExcelToCsv(){
+  if(typeof XLSX==='undefined'){ alert('SheetJS not loaded yet, wait a moment.'); return; }
+  const cb=document.getElementById('cb3'); cb.disabled=true; cb.textContent='Converting…';
+  const allSheets=document.getElementById('o3-all')?.checked;
+  t3sheets=0;
+  for(const f of t3files){
+    const buf=await f.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const sheets=allSheets?wb.SheetNames:[wb.SheetNames[0]];
+    t3conv[f.name]=sheets.map(sn=>{
+      const ws=wb.Sheets[sn];
+      const csv=XLSX.utils.sheet_to_csv(ws);
+      t3sheets++;
+      return { name:sn, csv, fname:f.name.replace(/\.(xlsx|xls)$/,'')+`_${sn}.csv` };
+    });
+  }
+  cb.disabled=false; cb.textContent='Convert All';
+  const da=document.getElementById('da3'); if(da) da.disabled=false;
+  renderT3();
+}
+
+async function dlAll3(){
+  const all=[]; Object.values(t3conv).forEach(sheets=>all.push(...sheets));
+  if(!all.length) return;
+  if(all.length===1){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([all[0].csv],{type:'text/csv'})); a.download=all[0].fname; a.click(); return; }
+  const zip=new JSZip(); all.forEach(s=>zip.file(s.fname,s.csv));
+  const blob=await zip.generateAsync({type:'blob'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='nebulapy_csv.zip'; a.click();
+}
+
+// ─────────────────────────────────────────────
+// TOOL 4: CSV → Excel
+// ─────────────────────────────────────────────
+let t4files=[];
+
+dropHandlers['csv-excel'] = function(newF){
+  newF.forEach(f=>{ if(f.name.endsWith('.csv')&&!t4files.find(x=>x.name===f.name)) t4files.push(f); });
+  renderT4();
+};
+
+function renderT4(){
+  const fl=document.getElementById('fl4'); if(!fl) return;
+  fl.innerHTML='';
+  const has=t4files.length>0;
+  document.getElementById('cb4').disabled=!has;
+  document.getElementById('cl4').disabled=!has;
+  const sb=document.getElementById('sb4');
+  if(has){ sb.style.display='flex'; document.getElementById('s4t').textContent=t4files.length; document.getElementById('s4d').textContent=t4files.length; }
+  else sb.style.display='none';
+  t4files.forEach((f,i)=>{
+    const d=document.createElement('div'); d.className='file-item';
+    d.innerHTML=`<span class="file-icon">📋</span><span class="file-name">${f.name}</span><span class="file-size">${fmtSz(f.size)}</span><span class="fbadge fb-ready">ready</span><button class="btn-rm" onclick="rmT4(${i})">✕</button>`;
+    fl.appendChild(d);
+  });
+}
+
+function rmT4(i){ t4files.splice(i,1); renderT4(); }
+function clearTool4(){ t4files=[]; renderT4(); }
+
+async function runCsvToExcel(){
+  if(typeof XLSX==='undefined'){ alert('SheetJS not loaded yet.'); return; }
+  const cb=document.getElementById('cb4'); cb.disabled=true; cb.textContent='Building…';
+  const oneWb=document.getElementById('o4-one')?.checked;
+  const freeze=document.getElementById('o4-freeze')?.checked;
+  if(oneWb){
+    const wb=XLSX.utils.book_new();
+    for(const f of t4files){
+      const txt=await f.text();
+      const ws=XLSX.utils.aoa_to_sheet(txt.split('\n').map(r=>r.split(',')));
+      if(freeze) ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
+      XLSX.utils.book_append_sheet(wb,ws,f.name.replace('.csv','').slice(0,31));
+    }
+    XLSX.writeFile(wb,'nebulapy_combined.xlsx');
+  } else {
+    for(const f of t4files){
+      const txt=await f.text();
+      const wb=XLSX.utils.book_new();
+      const ws=XLSX.utils.aoa_to_sheet(txt.split('\n').map(r=>r.split(',')));
+      XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+      XLSX.writeFile(wb,f.name.replace('.csv','.xlsx'));
+    }
+  }
+  cb.disabled=false; cb.textContent='Convert';
+}
+
+// ─────────────────────────────────────────────
+// TOOL 5: Image → PDF
+// ─────────────────────────────────────────────
+let t5files=[];
+
+dropHandlers['img-pdf'] = function(newF){
+  const valid=['image/jpeg','image/png','image/webp'];
+  newF.forEach(f=>{ if(valid.includes(f.type)&&!t5files.find(x=>x.name===f.name)) t5files.push(f); });
+  renderT5();
+};
+
+function renderT5(){
+  const fl=document.getElementById('fl5'); if(!fl) return;
+  fl.innerHTML='';
+  const has=t5files.length>0;
+  document.getElementById('cb5').disabled=!has;
+  document.getElementById('cl5').disabled=!has;
+  const sb=document.getElementById('sb5');
+  if(has){ sb.style.display='flex'; document.getElementById('s5t').textContent=t5files.length; }
+  else sb.style.display='none';
+  t5files.forEach((f,i)=>{
+    const d=document.createElement('div'); d.className='file-item';
+    d.innerHTML=`<span class="file-icon">🖼️</span><span class="file-name">${f.name}</span><span class="file-size">${fmtSz(f.size)}</span><span class="fbadge fb-ready">pg ${i+1}</span><button class="btn-rm" onclick="rmT5(${i})">✕</button>`;
+    fl.appendChild(d);
+  });
+}
+
+function rmT5(i){ t5files.splice(i,1); renderT5(); }
+function clearTool5(){ t5files=[]; renderT5(); }
+
+async function runImgToPdf(){
+  if(typeof window.jspdf==='undefined'&&typeof jsPDF==='undefined'){ const st=document.getElementById('pdfStatus5'); if(st){ st.style.display='block'; st.textContent='Loading jsPDF…'; } setTimeout(runImgToPdf,800); return; }
+  const cb=document.getElementById('cb5'); cb.disabled=true; cb.textContent='Building PDF…';
+  const st=document.getElementById('pdfStatus5'); if(st) st.style.display='none';
+  const fit=document.getElementById('o5-fit')?.checked;
+  const land=document.getElementById('o5-land')?.checked;
+  const JSPDF=window.jspdf?.jsPDF||window.jsPDF;
+  const orient=land?'landscape':'portrait';
+  const doc=new JSPDF({ orientation:orient, unit:'mm', format:'a4' });
+  const PW=land?297:210, PH=land?210:297;
+  for(let i=0;i<t5files.length;i++){
+    if(i>0) doc.addPage();
+    const f=t5files[i];
+    const url=await new Promise(res=>{ const r=new FileReader(); r.onload=e=>res(e.target.result); r.readAsDataURL(f); });
+    const img=await new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.src=url; });
+    const iw=img.width, ih=img.height;
+    let dw=PW, dh=ih*(PW/iw), dx=0, dy=0;
+    if(fit){ if(dh>PH){ dh=PH; dw=iw*(PH/ih); } dx=(PW-dw)/2; dy=(PH-dh)/2; }
+    const fmt=f.type==='image/png'?'PNG':'JPEG';
+    doc.addImage(url,fmt,dx,dy,dw,dh);
+  }
+  doc.save('nebulapy_images.pdf');
+  cb.disabled=false; cb.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Build PDF`;
+}
+
+// ─────────────────────────────────────────────
+// TOOL 6: DOCX → PDF
+// ─────────────────────────────────────────────
+let t6file=null;
+
+dropHandlers['docx-pdf'] = function(newF){
+  const f=newF.find(f=>f.name.endsWith('.docx'));
+  if(f){ t6file=f; renderT6(); }
+};
+
+function renderT6(){
+  const fl=document.getElementById('fl6'); if(!fl) return;
+  fl.innerHTML='';
+  if(!t6file){ document.getElementById('cb6').disabled=true; document.getElementById('cl6').disabled=true; return; }
+  document.getElementById('cb6').disabled=false; document.getElementById('cl6').disabled=false;
+  const d=document.createElement('div'); d.className='file-item';
+  d.innerHTML=`<span class="file-icon">📄</span><span class="file-name">${t6file.name}</span><span class="file-size">${fmtSz(t6file.size)}</span><span class="fbadge fb-ready">ready</span><button class="btn-rm" onclick="clearTool6()">✕</button>`;
+  fl.appendChild(d);
+}
+
+function clearTool6(){ t6file=null; renderT6(); const s=document.getElementById('docStatus'); if(s) s.style.display='none'; }
+
+async function runDocxToPdf(){
+  if(typeof mammoth==='undefined'){ const s=document.getElementById('docStatus'); if(s){s.style.display='block';s.textContent='Loading mammoth.js…';} setTimeout(runDocxToPdf,800); return; }
+  const cb=document.getElementById('cb6'); cb.disabled=true; cb.textContent='Rendering…';
+  const st=document.getElementById('docStatus'); if(st){ st.style.display='block'; st.textContent='Converting to HTML…'; }
+  const buf=await t6file.arrayBuffer();
+  const incImg=document.getElementById('o6-img')?.checked;
+  const opts=incImg?{}:{convertImage:mammoth.images.imgElement(()=>Promise.resolve({src:''}))};
+  const res=await mammoth.convertToHtml({arrayBuffer:buf}, opts);
+  const html=res.value;
+  const win=window.open('','_blank');
+  if(!win){ alert('Please allow popups for this page.'); cb.disabled=false; cb.textContent='Open Print Dialog'; return; }
+  const a4=document.getElementById('o6-pg')?.checked;
+  win.document.write(`<!DOCTYPE html><html><head><title>${t6file.name}</title><style>
+    @page { size:${a4?'A4':'letter'}; margin:2cm; }
+    body { font-family: Georgia, serif; font-size:12pt; line-height:1.6; color:#111; }
+    h1,h2,h3,h4 { font-family: Arial, sans-serif; }
+    table { border-collapse:collapse; width:100%; }
+    td,th { border:1px solid #ccc; padding:6px 10px; }
+    img { max-width:100%; }
+    @media print { button { display:none !important; } }
+  </style></head><body>
+    <button onclick="window.print()" style="position:fixed;top:16px;right:16px;padding:10px 20px;background:#6d28d9;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;z-index:9999;">🖨 Print / Save PDF</button>
+    ${html}
+  </body></html>`);
+  win.document.close();
+  if(st){ st.textContent='Document opened in new tab — use the Print button → Save as PDF'; }
+  cb.disabled=false; cb.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg> Open Print Dialog`;
+}
 </script>
 </body>
-  </html>
+</html>
