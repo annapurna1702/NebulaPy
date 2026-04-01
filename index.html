@@ -1027,7 +1027,8 @@ async function runCsvToExcel(){
     const wb=XLSX.utils.book_new();
     for(const f of t4files){
       const txt=await f.text();
-      const ws=XLSX.utils.aoa_to_sheet(txt.split('\n').map(r=>r.split(',')));
+      const wb2 = XLSX.read(txt, { type: 'string' });
+      const ws = wb2.Sheets[wb2.SheetNames[0]];
       if(freeze) ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'};
       XLSX.utils.book_append_sheet(wb,ws,f.name.replace('.csv','').slice(0,31));
     }
@@ -1036,7 +1037,8 @@ async function runCsvToExcel(){
     for(const f of t4files){
       const txt=await f.text();
       const wb=XLSX.utils.book_new();
-      const ws = XLSX.utils.sheet_from_csv(txt);
+      const wb2 = XLSX.read(txt, { type: 'string' });
+      const ws = wb2.Sheets[wb2.SheetNames[0]];
       XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
       XLSX.writeFile(wb,f.name.replace('.csv','.xlsx'));
     }
